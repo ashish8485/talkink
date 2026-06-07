@@ -26,9 +26,9 @@ final class PushToTalk {
 
         var displayName: String {
             switch self {
-            case .rightOption: return "Option droite ⌥"
-            case .leftOption: return "Option gauche ⌥"
-            case .rightControl: return "Contrôle droit ⌃"
+            case .rightOption: return "Right Option ⌥"
+            case .leftOption: return "Left Option ⌥"
+            case .rightControl: return "Right Control ⌃"
             case .fn: return "Fn / 🌐"
             }
         }

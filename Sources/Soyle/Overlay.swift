@@ -75,16 +75,16 @@ struct OverlayView: View {
         case .recording:
             RecordingDot()
             LiveWaveform(level: model.level)
-            label("Parle…")
+            label("Speak…")
         case .transcribing:
             BouncingDots()
-            label("Transcription…")
+            label("Transcribing…")
         case .done(let text):
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(Color.nvidia)
                 .transition(.scale.combined(with: .opacity))
-            label(text.isEmpty ? "Rien entendu" : "Copié")
+            label(text.isEmpty ? "Nothing heard" : "Copied")
         case .error(let msg):
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 15, weight: .bold))

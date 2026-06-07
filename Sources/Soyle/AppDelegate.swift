@@ -109,7 +109,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 else { updateMenu() }
             } catch {
                 modelLoadFailed = true
-                overlay.show(.error("Échec du chargement — réessai à la prochaine activation"), autoHideAfter: 3)
+                overlay.show(.error("Load failed — will retry on next activation"), autoHideAfter: 3)
             }
         }
     }
@@ -139,7 +139,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 await Task.detached(priority: .userInitiated) { [engine] in engine.warmUp() }.value
                 state = .ready
             } catch {
-                overlay.show(.error("Échec du chargement du modèle"), autoHideAfter: 3)
+                overlay.show(.error("Model failed to load"), autoHideAfter: 3)
             }
         }
     }
@@ -149,7 +149,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func startRecording() {
         guard state == .ready else {
             if state == .loadingModel {
-                overlay.show(.error("Modèle en cours de chargement…"), autoHideAfter: 1.5)
+                overlay.show(.error("Model is loading…"), autoHideAfter: 1.5)
             } else if state == .needsInputMonitoring {
                 promptInputMonitoring()
             }
@@ -157,7 +157,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         guard Permissions.hasMicrophone else {
             if Permissions.microphoneDenied {
-                overlay.show(.error("Micro refusé — voir Réglages"), autoHideAfter: 2.5)
+                overlay.show(.error("Microphone denied — see Settings"), autoHideAfter: 2.5)
                 Permissions.openMicrophoneSettings()
             } else {
                 Permissions.requestMicrophone { _ in }
@@ -170,7 +170,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             overlay.show(.recording)
             playSound(start: true)
         } catch {
-            overlay.show(.error("Micro indisponible"), autoHideAfter: 2)
+            overlay.show(.error("Microphone unavailable"), autoHideAfter: 2)
         }
     }
 
@@ -206,7 +206,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             } catch {
                 DispatchQueue.main.async {
-                    self.overlay.show(.error("Erreur de transcription"), autoHideAfter: 2)
+                    self.overlay.show(.error("Transcription error"), autoHideAfter: 2)
                     self.state = .ready
                 }
             }
@@ -249,19 +249,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
 
         if state == .needsInputMonitoring {
-            menu.addItem(item("Autoriser « Surveillance des saisies »…", #selector(promptInputMonitoringMenu)))
+            menu.addItem(item("Allow “Input Monitoring”…", #selector(promptInputMonitoringMenu)))
             menu.addItem(.separator())
         }
 
         if let up = UpdateChecker.shared.latest {
-            let mi = item("⬆ Nouvelle version v\(up.version)…", #selector(openUpdate(_:)))
+            let mi = item("⬆ New version v\(up.version)…", #selector(openUpdate(_:)))
             mi.representedObject = up.url
             menu.addItem(mi)
             menu.addItem(.separator())
         }
 
         // Language submenu
-        let langItem = NSMenuItem(title: "Langue : \(settings.language.displayName)", action: nil, keyEquivalent: "")
+        let langItem = NSMenuItem(title: "Language: \(settings.language.displayName)", action: nil, keyEquivalent: "")
         let langMenu = NSMenu()
         for lang in SoyleLanguage.allCases {
             let mi = item(lang.displayName, #selector(selectLanguage(_:)))
@@ -273,7 +273,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(langItem)
 
         // Model submenu
-        let modelItem = NSMenuItem(title: "Modèle : \(settings.model.shortLabel)", action: nil, keyEquivalent: "")
+        let modelItem = NSMenuItem(title: "Model: \(settings.model.shortLabel)", action: nil, keyEquivalent: "")
         let modelMenu = NSMenu()
         for m in SoyleModel.allCases {
             let mi = item(m.menuLabel, #selector(selectModel(_:)))
@@ -285,7 +285,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(modelItem)
 
         // Key submenu
-        let keyItem = NSMenuItem(title: "Touche : \(settings.pttKey.displayName)", action: nil, keyEquivalent: "")
+        let keyItem = NSMenuItem(title: "Key: \(settings.pttKey.displayName)", action: nil, keyEquivalent: "")
         let keyMenu = NSMenu()
         for k in PushToTalk.Key.allCases {
             let mi = item(k.displayName, #selector(selectKey(_:)))
@@ -296,26 +296,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         keyItem.submenu = keyMenu
         menu.addItem(keyItem)
 
-        let sounds = item("Sons de retour", #selector(toggleSounds))
+        let sounds = item("Feedback Sounds", #selector(toggleSounds))
         sounds.state = settings.playSounds ? .on : .off
         menu.addItem(sounds)
 
         menu.addItem(.separator())
-        menu.addItem(item("Ouvrir Söyle (historique, réglages)…", #selector(openSettings), key: ","))
-        menu.addItem(item("À propos de Söyle", #selector(about)))
+        menu.addItem(item("Open Söyle (history, settings)…", #selector(openSettings), key: ","))
+        menu.addItem(item("About Söyle", #selector(about)))
         menu.addItem(.separator())
-        menu.addItem(item("Quitter Söyle", #selector(quit), key: "q"))
+        menu.addItem(item("Quit Söyle", #selector(quit), key: "q"))
 
         statusItem.menu = menu
     }
 
     private func statusLine() -> String {
         switch state {
-        case .loadingModel: return "⏳ Chargement du modèle…"
-        case .ready: return "● Prêt — maintiens \(settings.pttKey.displayName)"
-        case .recording: return "🎙 Enregistrement…"
-        case .transcribing: return "✍️ Transcription…"
-        case .needsInputMonitoring: return "⚠️ Autorisation requise"
+        case .loadingModel: return "⏳ Loading model…"
+        case .ready: return "● Ready — hold \(settings.pttKey.displayName)"
+        case .recording: return "🎙 Recording…"
+        case .transcribing: return "✍️ Transcribing…"
+        case .needsInputMonitoring: return "⚠️ Permission required"
         }
     }
 
@@ -363,7 +363,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func about() {
         let alert = NSAlert()
         alert.messageText = "Söyle"
-        alert.informativeText = "Dictée vocale locale (NVIDIA Nemotron 3.5 ASR via MLX).\nMaintiens \(settings.pttKey.displayName), parle, relâche — le texte est copié."
+        alert.informativeText = "On-device voice dictation (NVIDIA Nemotron 3.5 ASR via MLX).\nHold \(settings.pttKey.displayName), speak, release — the text is copied."
         alert.addButton(withTitle: "OK")
         NSApp.activate(ignoringOtherApps: true)
         alert.runModal()

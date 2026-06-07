@@ -15,16 +15,16 @@ enum SoyleLanguage: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .auto: return "Auto (détection)"
-        case .frFR: return "Français"
+        case .auto: return "Auto (detect)"
+        case .frFR: return "French"
         case .enUS: return "English"
-        case .deDE: return "Deutsch"
-        case .esES: return "Español"
-        case .itIT: return "Italiano"
-        case .ptPT: return "Português"
-        case .trTR: return "Türkçe"
-        case .arSA: return "العربية"
-        case .nlNL: return "Nederlands"
+        case .deDE: return "German"
+        case .esES: return "Spanish"
+        case .itIT: return "Italian"
+        case .ptPT: return "Portuguese"
+        case .trTR: return "Turkish"
+        case .arSA: return "Arabic"
+        case .nlNL: return "Dutch"
         }
     }
 }

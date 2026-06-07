@@ -49,16 +49,16 @@ CNF
 # -A: allow all apps to use the key without per-use prompts (local dev key).
 security import "$TMP/id.p12" -k "$KEYCHAIN" -P "$P12PASS" -A -T /usr/bin/codesign >/dev/null
 
-echo ">>> macOS va demander ton mot de passe pour faire confiance au certificat local (signature de code)."
-echo ">>> Entre ton mot de passe Mac et clique « Mettre à jour les réglages »."
+echo ">>> macOS will ask for your password to trust the local certificate (code signing)."
+echo ">>> Enter your Mac password and click \"Update Settings\"."
 security add-trusted-cert -r trustRoot -p codeSign -k "$KEYCHAIN" "$TMP/cert.pem"
 
 echo
 if security find-identity -v -p codesigning | grep -q "$IDENTITY"; then
-  echo "✅ '$IDENTITY' est prêt et valide pour signer."
+  echo "✅ '$IDENTITY' is ready and valid for signing."
   security find-identity -v -p codesigning | grep "$IDENTITY"
 else
-  echo "⚠️  L'identité n'est pas encore valide. Réessaie, ou crée-la via Trousseau d'accès →"
-  echo "    Assistant de certificat → Créer un certificat → 'Soyle Dev', type 'Signature de code'."
+  echo "⚠️  The identity is not valid yet. Try again, or create it via Keychain Access →"
+  echo "    Certificate Assistant → Create a Certificate → 'Soyle Dev', type 'Code Signing'."
   exit 1
 fi

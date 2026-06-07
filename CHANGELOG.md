@@ -1,32 +1,33 @@
 # Changelog
 
-## v0.1.0 — 2026-06-07
+## v0.1.0
 
 First release. Local push-to-talk dictation for Apple Silicon, powered by NVIDIA
-Nemotron 3.5 ASR via MLX — 100 % native Swift, no Python at runtime.
+Nemotron 3.5 ASR via MLX — 100% native Swift, no Python at runtime.
 
-### Added
-- **Push-to-talk** global hotkey (listen-only `CGEventTap`, Input Monitoring): hold a
-  key, speak, release → transcribe → copy to clipboard. Default key: Right Option ⌥.
-- **Native Nemotron 3.5 ASR** engine (`SoyleKit`) on `mlx-audio-swift`, with model
-  warm-up at launch for instant first transcription.
-- **Menu-bar app** (no Dock icon) with live state, plus an **onboarding/settings window**
-  (NVIDIA green): permission status, push-to-talk key, language (auto + 9 locales),
-  model (**8-bit** default / **bf16**), feedback sounds, launch-at-login.
-- **Floating recording overlay** with a live waveform meter.
-- 16 kHz mono capture via `AVAudioEngine` + `AVAudioConverter` (resample + downmix).
-- Clipboard-only output (no Accessibility permission required).
-- `soyle-cli` for headless transcription/benchmarking and `--selftest` mode.
-- `scripts/build_app.sh` (xcodebuild → `.app` + bundled Metal library → ad-hoc sign),
-  `scripts/make_icns.sh` (app icon).
+### Features
+- **Push-to-talk** global hotkey (listen-only `CGEventTap` + Input Monitoring): hold a
+  key, speak, release → transcribe → paste. Default key: Right Option ⌥; rebindable.
+- **Auto-paste at the cursor** (synthetic ⌘V via Accessibility), with the transcript
+  always placed on the clipboard as a fallback. Toggleable.
+- **History** — every transcription is saved locally (up to 500, at
+  `~/Library/Application Support/Soyle/history.json`), searchable and re-copyable in-app.
+- **Native Nemotron 3.5 ASR** engine on `mlx-audio-swift`, warmed up at launch for an
+  instant first transcription. ~30–40× real time on a MacBook Air M4 (8-bit).
+- Menu-bar app (no Dock icon) with a floating recording overlay (live waveform, NVIDIA green).
+- Settings: push-to-talk key, language (auto + 9 locales), model (**8-bit** default / **bf16**),
+  auto-paste, feedback sounds, launch at login, check-for-updates.
+- Update notifier: checks GitHub Releases and surfaces a "new version available" notice.
+- `soyle-cli` for headless transcription/benchmarking; `--selftest` mode.
 
-### Verified
-- Native inference on MacBook Air M4: ~30–40× real time (8-bit), JFK sample transcribed
-  verbatim; FR near-verbatim.
-- Stress-tested (no crashes): silence, 0.15 s clip, 44.1 kHz stereo (resample+downmix),
-  pink noise, 55 s clip (chunked).
+### Robustness
+- In-session re-arm of the push-to-talk tap once Input Monitoring is granted (no relaunch).
+- Recovers from a mid-recording microphone unplug / device or route change.
+- Retries the model load on next activation if the first attempt fails (e.g. offline).
+- Serialized MLX inference; guards against sub-0.1s audio.
+- Stress-tested: silence, 0.15s, 44.1 kHz stereo (resample+downmix), noise, 55s (chunked).
 
-### Known limitations
-- Ad-hoc signed (no notarization yet) → first launch may need *Open Anyway* if downloaded.
-- Live test of the global hotkey + mic requires granting Microphone + Input Monitoring.
-- Streaming live-text (`generateStream`) not yet wired into the UI.
+### Distribution
+- Open source (MIT). **Not notarized** — download builds need a one-time
+  `xattr -dr com.apple.quarantine`, or build from source. Notarization + Sparkle
+  auto-update are on the roadmap.

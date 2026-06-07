@@ -20,8 +20,8 @@ public enum SoyleModel: String, CaseIterable, Sendable {
 
     public var menuLabel: String {
         switch self {
-        case .int8: return "8-bit (rapide, recommandé)"
-        case .bf16: return "bf16 (précision max)"
+        case .int8: return "8-bit (fast, recommended)"
+        case .bf16: return "bf16 (max accuracy)"
         }
     }
 }
@@ -41,8 +41,8 @@ public enum SoyleError: Error, LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .modelNotLoaded: return "Le modèle n'est pas encore chargé."
-        case .audioLoadFailed(let p): return "Échec du chargement audio : \(p)"
+        case .modelNotLoaded: return "The model isn't loaded yet."
+        case .audioLoadFailed(let p): return "Audio loading failed: \(p)"
         }
     }
 }

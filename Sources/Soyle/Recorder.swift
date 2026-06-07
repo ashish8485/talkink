@@ -57,7 +57,7 @@ final class Recorder {
         // A disconnected/again-0Hz device reports a 0 Hz format that crashes installTap.
         guard hwFormat.sampleRate > 0 else {
             throw NSError(domain: "Soyle.Recorder", code: 1,
-                          userInfo: [NSLocalizedDescriptionKey: "Aucun périphérique d'entrée audio disponible."])
+                          userInfo: [NSLocalizedDescriptionKey: "No audio input device available."])
         }
         converter = AVAudioConverter(from: hwFormat, to: targetFormat)
         input.installTap(onBus: 0, bufferSize: 4096, format: hwFormat) { [weak self] buffer, _ in

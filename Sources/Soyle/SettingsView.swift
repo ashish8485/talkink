@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 import SoyleKit
 
-/// Onboarding + settings (the "Réglages" tab). Live permission status with grant
+/// Onboarding + settings (the "Settings" tab). Live permission status with grant
 /// buttons, dictation prefs, behaviour, and an update notice. NVIDIA-green accents.
 struct SettingsView: View {
     @ObservedObject var settings: SettingsStore
@@ -35,7 +35,7 @@ struct SettingsView: View {
             .frame(width: 50, height: 50)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Söyle").font(.system(size: 22, weight: .bold))
-                Text("Maintiens \(settings.pttKey.displayName), parle, relâche.")
+                Text("Hold \(settings.pttKey.displayName), speak, release.")
                     .font(.system(size: 12)).foregroundStyle(.secondary)
             }
             Spacer()
@@ -48,30 +48,30 @@ struct SettingsView: View {
     private var permissionsSection: some View {
         Section {
             permRow(title: "Microphone", granted: perms.microphone,
-                    hint: "Pour enregistrer ta voix (rien n'est envoyé sur Internet).",
-                    button: perms.microphone ? nil : (Permissions.microphoneDenied ? "Ouvrir Réglages" : "Autoriser")) {
+                    hint: "To record your voice (nothing is sent over the Internet).",
+                    button: perms.microphone ? nil : (Permissions.microphoneDenied ? "Open Settings" : "Allow")) {
                 if Permissions.microphoneDenied { Permissions.openMicrophoneSettings() }
                 else { Permissions.requestMicrophone { _ in perms.refresh() } }
             }
-            permRow(title: "Surveillance des saisies", granted: perms.inputMonitoring,
-                    hint: "Pour détecter ta touche globalement. Relance Söyle après activation.",
-                    button: perms.inputMonitoring ? nil : "Autoriser") {
+            permRow(title: "Input Monitoring", granted: perms.inputMonitoring,
+                    hint: "To detect your key globally. Restart Söyle after enabling.",
+                    button: perms.inputMonitoring ? nil : "Allow") {
                 Permissions.requestInputMonitoring(); Permissions.openInputMonitoringSettings()
             }
-            permRow(title: "Accessibilité", granted: perms.accessibility,
-                    hint: "Pour coller automatiquement au curseur. Sans elle, le texte reste dans le presse-papier (⌘V).",
-                    button: perms.accessibility ? nil : "Autoriser") {
+            permRow(title: "Accessibility", granted: perms.accessibility,
+                    hint: "To paste automatically at the cursor. Without it, the text stays in the clipboard (⌘V).",
+                    button: perms.accessibility ? nil : "Allow") {
                 Permissions.requestAccessibility(); Permissions.openAccessibilitySettings()
             }
         } header: {
-            Text("Autorisations")
+            Text("Permissions")
         } footer: {
             if perms.essentialsGranted {
-                Label(perms.accessibility ? "Tout est prêt." : "Prêt (auto-collage off — presse-papier seul).",
+                Label(perms.accessibility ? "Everything is ready." : "Ready (auto-paste off — clipboard only).",
                       systemImage: "checkmark.seal.fill")
                     .foregroundStyle(Color.nvidia).font(.caption)
             } else {
-                Text("Micro + Surveillance des saisies sont nécessaires au fonctionnement.")
+                Text("Microphone + Input Monitoring are required to function.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -98,14 +98,14 @@ struct SettingsView: View {
     // MARK: Dictation
 
     private var dictationSection: some View {
-        Section("Dictée") {
-            Picker("Touche push-to-talk", selection: $settings.pttKey) {
+        Section("Dictation") {
+            Picker("Push-to-talk key", selection: $settings.pttKey) {
                 ForEach(PushToTalk.Key.allCases, id: \.self) { Text($0.displayName).tag($0) }
             }
-            Picker("Langue", selection: $settings.language) {
+            Picker("Language", selection: $settings.language) {
                 ForEach(SoyleLanguage.allCases) { Text($0.displayName).tag($0) }
             }
-            Picker("Modèle", selection: $settings.model) {
+            Picker("Model", selection: $settings.model) {
                 ForEach(SoyleModel.allCases, id: \.self) { Text($0.menuLabel).tag($0) }
             }
         }
@@ -114,11 +114,11 @@ struct SettingsView: View {
     // MARK: Behaviour
 
     private var behaviourSection: some View {
-        Section("Comportement") {
-            Toggle("Coller automatiquement au curseur", isOn: $settings.autoPaste)
-            Toggle("Sons de retour", isOn: $settings.playSounds)
-            Toggle("Lancer au démarrage", isOn: $settings.launchAtLogin)
-            Toggle("Vérifier les mises à jour (GitHub)", isOn: $settings.checkForUpdates)
+        Section("Behaviour") {
+            Toggle("Paste automatically at the cursor", isOn: $settings.autoPaste)
+            Toggle("Feedback sounds", isOn: $settings.playSounds)
+            Toggle("Launch at login", isOn: $settings.launchAtLogin)
+            Toggle("Check for updates (GitHub)", isOn: $settings.checkForUpdates)
         }
     }
 
@@ -128,10 +128,10 @@ struct SettingsView: View {
         HStack(spacing: 8) {
             if let up = update.latest {
                 Image(systemName: "arrow.down.circle.fill").foregroundStyle(Color.nvidia)
-                Text("Nouvelle version v\(up.version)").font(.caption).fontWeight(.semibold)
-                Button("Voir") { NSWorkspace.shared.open(up.url) }.buttonStyle(.link).tint(.nvidia)
+                Text("New version v\(up.version)").font(.caption).fontWeight(.semibold)
+                Button("View") { NSWorkspace.shared.open(up.url) }.buttonStyle(.link).tint(.nvidia)
             } else {
-                Text("v\(update.currentVersion) · 100 % local · NVIDIA Nemotron 3.5 + MLX")
+                Text("v\(update.currentVersion) · 100% local · NVIDIA Nemotron 3.5 + MLX")
                     .font(.caption2).foregroundStyle(.secondary)
             }
             Spacer()

@@ -4,11 +4,11 @@
 
 # Söyle
 
-**Dis-le. Et c'est écrit.**
+**Say it. It's written.**
 
-Dictée vocale **push-to-talk, 100 % locale** sur Apple Silicon.
-Maintiens une touche, parle, relâche — le texte est transcrit sur ta machine et copié,
-prêt à coller partout. Propulsé par **NVIDIA Nemotron 3.5 ASR** via **MLX**.
+Push-to-talk dictation for macOS that runs **100% on your Mac**.
+Hold a key, speak, release — your speech is transcribed locally and pasted at your
+cursor (and copied to the clipboard). Powered by **NVIDIA Nemotron 3.5 ASR** via **MLX**.
 
 ![macOS](https://img.shields.io/badge/macOS-14%2B-black?logo=apple)
 ![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-required-black)
@@ -18,30 +18,42 @@ prêt à coller partout. Propulsé par **NVIDIA Nemotron 3.5 ASR** via **MLX**.
 
 ---
 
-## Pourquoi Söyle
+## Why Söyle
 
-- 🔒 **Local & privé** — aucun octet d'audio ne quitte ta machine. Pas de cloud, pas d'abonnement.
-- 🌍 **40 langues** depuis un seul modèle (FR / EN / TR / DE / ES…), ponctuation + majuscules automatiques.
-- ⚡ **Rapide** — ~30–40× le temps réel sur un MacBook Air M4 (8-bit).
-- 🎯 **Simple** — un défaut sensé pour tout le monde ; tout est réglable pour qui veut.
-- 🟢 **Open-source** (MIT).
+- 🔒 **Local & private** — your voice and text never leave your Mac. No cloud, no subscription.
+- ⚡ **Fast** — ~30–40× faster than real time on a MacBook Air M4 (8-bit model).
+- 🌍 **Multilingual** — auto-detects across the model's ~40 locales; 9 fixed locales selectable (EN/FR/DE/ES/IT/PT/TR/AR/NL). Punctuation & capitalization included.
+- ⌨️ **Paste anywhere** — auto-pastes at the cursor; always on the clipboard as a fallback.
+- 📜 **History** — every transcription is kept locally and is searchable / re-copyable in-app.
+- 🟢 **Open source** (MIT), 100% native Swift — no Python at runtime.
 
-## Comment ça marche
+## How it works
 
-1. Söyle vit dans la barre de menus (pas d'icône dans le Dock).
-2. **Maintiens** la touche push-to-talk (Option droite ⌥ par défaut) → enregistrement.
-3. **Parle.**
-4. **Relâche** → transcription locale en quelques dixièmes de seconde → **texte copié** dans le presse-papier.
-5. **Colle** (⌘V) où tu veux.
+1. Söyle lives in the menu bar (no Dock icon).
+2. **Hold** the push-to-talk key (Right Option ⌥ by default) → recording starts.
+3. **Speak.**
+4. **Release** → local transcription in a fraction of a second → text is **pasted at your cursor** (if Accessibility is granted) and **copied to the clipboard**.
+5. It's also saved to **History** in case you need it again.
 
-Une pilule flottante (vert NVIDIA) montre l'état : enregistrement → transcription → copié ✓.
+A floating pill (NVIDIA green) shows the state: recording → transcribing → done.
 
-## Installation
+## Install
 
-> Distribution open-source signée ad-hoc (sans compte Apple Developer). Au premier lancement,
-> macOS affiche un avertissement Gatekeeper : **Réglages Système → Confidentialité et sécurité → Ouvrir quand même**.
+> **Honest note on distribution.** Söyle is open source and **not notarized by Apple** (yet).
+> On macOS Sequoia, a *downloaded* unsigned app is blocked by Gatekeeper on first launch.
+> Two options below — the one-time `xattr` command clears the quarantine flag.
 
-### Compiler depuis les sources
+### Option 1 — Download (quickest)
+
+1. Grab the latest `Soyle.zip` from [**Releases**](https://github.com/hasso5703/soyle/releases/latest).
+2. Unzip and move **Söyle.app** to `/Applications`.
+3. Clear the quarantine flag (one time), then open it:
+   ```bash
+   xattr -dr com.apple.quarantine /Applications/Söyle.app
+   open /Applications/Söyle.app
+   ```
+
+### Option 2 — Build from source (for developers)
 
 ```bash
 git clone https://github.com/hasso5703/soyle.git
@@ -50,46 +62,60 @@ scripts/build_app.sh Release
 open dist/Söyle.app
 ```
 
-Requiert Xcode 16+ (le compilateur Metal en a besoin — voir [BUILDING.md](BUILDING.md)).
-Le modèle (~756 Mo) se télécharge au premier lancement.
+Requires **Xcode 16+** (the Metal compiler is needed — see [BUILDING.md](BUILDING.md)).
+The model (~756 MB, 8-bit) downloads on first launch.
 
-## Permissions (2)
+## Permissions
 
-| Permission | Pourquoi | Où |
+| Permission | Why | Required? |
 |---|---|---|
-| **Microphone** | Enregistrer ta voix | demandé au 1er lancement |
-| **Surveillance des saisies** | Détecter ta touche globalement (push-to-talk) | Réglages → Confidentialité → Surveillance des saisies → relancer |
+| **Microphone** | Record your voice | Yes |
+| **Input Monitoring** | Detect the push-to-talk key globally | Yes (relaunch Söyle after granting) |
+| **Accessibility** | Auto-paste at the cursor (synthetic ⌘V) | Optional — without it, text stays on the clipboard (paste with ⌘V) |
 
-Pas d'Accessibilité requise : Söyle **copie** le texte (tu colles avec ⌘V).
+The onboarding window walks you through these on first launch.
 
-## Réglages
+## Settings
 
-Accessibles via la barre de menus → **Réglages…** :
+Menu bar → **Open Söyle** → *Settings* tab:
 
-- **Touche push-to-talk** : Option droite (défaut), Option gauche, Contrôle droit, ou Fn / 🌐.
-- **Langue** : Auto (détection) ou une locale fixe (fr-FR, en-US, tr-TR…).
-- **Modèle** : **8-bit** (défaut, rapide) ou **bf16** (précision max).
-- Sons de retour, lancement au démarrage.
+- **Push-to-talk key** — Right Option (default), Left Option, Right Control, or Fn / 🌐.
+- **Language** — Auto (detect) or a fixed locale.
+- **Model** — **8-bit** (default, fast) or **bf16** (max accuracy).
+- **Auto-paste at cursor**, feedback sounds, launch at login, check for updates.
 
-## Pile technique
+## Network activity
 
-| Brique | Rôle |
-|---|---|
-| [NVIDIA Nemotron 3.5 ASR](https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b) | modèle (cache-aware FastConformer-RNNT, 600M, 40 locales) |
-| [mlx-audio-swift](https://github.com/Blaizzy/mlx-audio-swift) | implémentation Swift/MLX native de Nemotron (MIT) |
-| [mlx-community](https://huggingface.co/mlx-community) | poids convertis MLX (8-bit / bf16) |
-| [MLX](https://github.com/ml-explore/mlx-swift) | calcul sur Apple Silicon (Apple) |
+Söyle's transcription is 100% on-device. The only network calls are:
 
-100 % Swift natif — pas de Python à l'exécution.
+1. **First-run model download** (~756 MB) from Hugging Face into `~/.cache/huggingface`.
+2. **Update check** (optional, toggle in Settings) — a request to the GitHub Releases API at launch. No usage telemetry is sent.
 
-## Feuille de route
+## Troubleshooting
 
-- [ ] Texte en direct pendant la dictée (streaming `generateStream`)
-- [ ] DMG notarisé + cask Homebrew (`brew install --cask soyle`)
-- [ ] Dictionnaire perso (noms propres, jargon)
-- [ ] Raccourci « mode mains libres » (toggle)
+- **Push-to-talk does nothing** → grant **Input Monitoring** (System Settings → Privacy & Security → Input Monitoring), then **relaunch** Söyle (the grant only applies after relaunch).
+- **It stopped working after rebuilding from source** → ad-hoc signatures change each build; run `scripts/dev_sign_setup.sh` once to create a stable local signing identity so grants persist.
+- **Using Fn / 🌐 as the key** → set System Settings → Keyboard → "Press 🌐 to" = **Do Nothing**.
+- **Model download stalls** → check your connection and `~/.cache/huggingface`.
 
-## Crédits & licence
+## Tech stack & credits
 
-Construit sur le travail de Prince Canuma (mlx-audio-swift) et NVIDIA (Nemotron).
-Code Söyle sous licence [MIT](LICENSE).
+| Component | Role | License |
+|---|---|---|
+| [NVIDIA Nemotron 3.5 ASR](https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b) | The model (cache-aware FastConformer-RNNT, 600M, ~40 locales) | NVIDIA model license (OpenMDW-1.1) — see model card |
+| [mlx-audio-swift](https://github.com/Blaizzy/mlx-audio-swift) | Native Swift/MLX implementation of Nemotron (Prince Canuma) | MIT |
+| [mlx-community](https://huggingface.co/mlx-community) | MLX-converted weights (8-bit / bf16) | per model license |
+| [MLX](https://github.com/ml-explore/mlx-swift) | Compute on Apple Silicon (Apple) | MIT |
+
+**The downloaded model is governed by NVIDIA's model license, not MIT.** By using Söyle you agree to it.
+
+## Roadmap
+
+- [ ] Live text while you speak (streaming `generateStream`)
+- [ ] Notarized DMG + [Sparkle](https://sparkle-project.org) auto-update + Homebrew cask
+- [ ] Custom dictionary (proper nouns, jargon)
+- [ ] Hands-free toggle mode
+
+## License
+
+Söyle's code is [MIT](LICENSE). See the table above for component and model licenses.

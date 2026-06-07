@@ -1,0 +1,45 @@
+name: Release
+
+# Tag a version to cut a release:  git tag v0.1.0 && git push origin v0.1.0
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    # Needs Xcode 26+ (Swift 6.2) for the mlx-audio-swift manifest. Bump the image
+    # if the build fails to resolve the package.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Build (ad-hoc signed — Path B, no notarization)
+        env:
+          SOYLE_SIGN_IDENTITY: "-"
+        run: scripts/build_app.sh Release
+
+      - name: Stamp version from the tag
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          PLIST="dist/Söyle.app/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${VER}" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${GITHUB_RUN_NUMBER}" "$PLIST"
+          # Re-sign: editing Info.plist invalidates the signature.
+          codesign --force --sign - "dist/Söyle.app"
+          test -f "dist/Söyle.app/Contents/Resources/mlx-swift_Cmlx.bundle/Contents/Resources/default.metallib"
+
+      - name: Zip (ditto preserves signature + symlinks; plain zip corrupts them)
+        run: ditto -c -k --keepParent "dist/Söyle.app" "Soyle.zip"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" "Soyle.zip" --title "Söyle ${GITHUB_REF_NAME}" --generate-notes

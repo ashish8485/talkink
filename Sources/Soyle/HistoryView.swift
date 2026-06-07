@@ -36,12 +36,12 @@ struct HistoryView: View {
     private var toolbar: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass").foregroundStyle(.secondary).font(.system(size: 12))
-            TextField("Rechercher dans l'historique…", text: $query)
+            TextField("Search history…", text: $query)
                 .textFieldStyle(.plain)
             Spacer()
             if !history.items.isEmpty {
                 Button(role: .destructive) { history.clear() } label: {
-                    Text("Tout effacer").font(.caption)
+                    Text("Clear all").font(.caption)
                 }
                 .buttonStyle(.borderless)
             }
@@ -75,7 +75,7 @@ struct HistoryView: View {
                 Spacer(minLength: 8)
                 Group {
                     if copiedID == item.id {
-                        Label("Copié", systemImage: "checkmark")
+                        Label("Copied", systemImage: "checkmark")
                             .labelStyle(.iconOnly)
                             .foregroundStyle(Color.nvidia)
                     } else {
@@ -90,16 +90,16 @@ struct HistoryView: View {
         }
         .buttonStyle(.plain)
         .contextMenu {
-            Button("Copier") { Clipboard.copy(item.text) }
-            Button("Supprimer", role: .destructive) { history.delete(item) }
+            Button("Copy") { Clipboard.copy(item.text) }
+            Button("Delete", role: .destructive) { history.delete(item) }
         }
     }
 
     private var emptyState: some View {
         VStack(spacing: 10) {
             Image(systemName: "tray").font(.system(size: 34)).foregroundStyle(.secondary)
-            Text("Aucune transcription").font(.headline)
-            Text("Maintiens ta touche, parle, relâche — tout apparaîtra ici.")
+            Text("No transcriptions yet").font(.headline)
+            Text("Hold your key, speak, release — everything will appear here.")
                 .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -109,7 +109,7 @@ struct HistoryView: View {
     private var noMatch: some View {
         VStack(spacing: 8) {
             Image(systemName: "magnifyingglass").font(.system(size: 26)).foregroundStyle(.secondary)
-            Text("Aucun résultat").foregroundStyle(.secondary)
+            Text("No results").foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(40)

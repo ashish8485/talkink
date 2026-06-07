@@ -23,7 +23,7 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Söyle transcrit ta voix en local (sur ta machine) pour copier le texte dans le presse-papier. Aucun audio n'est envoyé sur Internet.</string>
+	<string>Söyle transcribes your voice locally (on your machine) to copy the text into the clipboard. No audio is sent over the Internet.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 Hasan — MIT License</string>
 	<key>LSApplicationCategoryType</key>
