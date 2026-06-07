@@ -28,6 +28,7 @@ mkdir -p "${APP}/Contents/MacOS" "${APP}/Contents/Resources"
 cp "${PROD}/${EXEC}" "${APP}/Contents/MacOS/${EXEC}"
 cp "${ROOT}/packaging/Info.plist" "${APP}/Contents/Info.plist"
 printf 'APPL????' > "${APP}/Contents/PkgInfo"
+[ -f "${ROOT}/packaging/AppIcon.icns" ] && cp "${ROOT}/packaging/AppIcon.icns" "${APP}/Contents/Resources/AppIcon.icns"
 
 # Copy ALL SwiftPM resource bundles (mlx-swift_Cmlx has the REQUIRED default.metallib).
 shopt -s nullglob

@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import ServiceManagement
 import SoyleKit
 
 /// Available transcription languages. `auto` lets Nemotron detect the language.
@@ -39,7 +40,7 @@ final class SettingsStore: ObservableObject {
         static let model = "soyle.model"
         static let pttKey = "soyle.pttKey"
         static let playSounds = "soyle.playSounds"
-        static let trimWhitespace = "soyle.trimWhitespace"
+        static let hasOnboarded = "soyle.hasOnboarded"
     }
 
     @Published var language: SoyleLanguage {
@@ -54,6 +55,12 @@ final class SettingsStore: ObservableObject {
     @Published var playSounds: Bool {
         didSet { defaults.set(playSounds, forKey: K.playSounds) }
     }
+    @Published var launchAtLogin: Bool {
+        didSet { applyLoginItem(launchAtLogin) }
+    }
+    @Published var hasOnboarded: Bool {
+        didSet { defaults.set(hasOnboarded, forKey: K.hasOnboarded) }
+    }
 
     private init() {
         language = SoyleLanguage(rawValue: defaults.string(forKey: K.language) ?? "") ?? .auto
@@ -61,5 +68,19 @@ final class SettingsStore: ObservableObject {
         let keyRaw = defaults.object(forKey: K.pttKey) as? Int
         pttKey = PushToTalk.Key(rawValue: keyRaw ?? PushToTalk.Key.rightOption.rawValue) ?? .rightOption
         playSounds = defaults.object(forKey: K.playSounds) as? Bool ?? true
+        launchAtLogin = (SMAppService.mainApp.status == .enabled)
+        hasOnboarded = defaults.bool(forKey: K.hasOnboarded)
+    }
+
+    private func applyLoginItem(_ on: Bool) {
+        do {
+            if on {
+                if SMAppService.mainApp.status != .enabled { try SMAppService.mainApp.register() }
+            } else {
+                if SMAppService.mainApp.status == .enabled { try SMAppService.mainApp.unregister() }
+            }
+        } catch {
+            NSLog("Söyle: login item update failed: \(error.localizedDescription)")
+        }
     }
 }

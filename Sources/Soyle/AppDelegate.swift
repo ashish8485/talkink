@@ -18,6 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let ptt = PushToTalk(key: SettingsStore.shared.pttKey)
     private let recorder = Recorder()
     private let overlay = OverlayController()
+    private lazy var settingsWindowController = SettingsWindowController(settings: settings)
 
     private var statusItem: NSStatusItem!
     private var cancellables = Set<AnyCancellable>()
@@ -50,13 +51,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if AVCaptureDeviceStatusIsUndetermined() {
             Permissions.requestMicrophone { _ in }
         }
-        // Input Monitoring: needed for the global tap. If missing, prompt + guide.
+        // Input Monitoring: needed for the global tap.
         if ptt.start() {
             state = .loadingModel // will flip to .ready once model loads
         } else {
             state = .needsInputMonitoring
-            Permissions.requestInputMonitoring()
         }
+        // First run, or push-to-talk permission still missing → show onboarding/settings.
+        if !settings.hasOnboarded || !Permissions.hasInputMonitoring {
+            DispatchQueue.main.async { [weak self] in self?.openSettings() }
+        }
+        settings.hasOnboarded = true
     }
 
     private func loadModel() {
@@ -247,7 +252,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(sounds)
 
         menu.addItem(.separator())
-        menu.addItem(item("Réglages système (permissions)…", #selector(openPermissions)))
+        menu.addItem(item("Réglages…", #selector(openSettings), key: ","))
         menu.addItem(item("À propos de Söyle", #selector(about)))
         menu.addItem(.separator())
         menu.addItem(item("Quitter Söyle", #selector(quit), key: "q"))
@@ -296,30 +301,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func toggleSounds() { settings.playSounds.toggle(); updateMenu() }
 
-    @objc private func openPermissions() {
-        Permissions.openInputMonitoringSettings()
-    }
+    @objc private func openSettings() { settingsWindowController.show() }
 
-    @objc private func promptInputMonitoringMenu() { promptInputMonitoring() }
+    @objc private func promptInputMonitoringMenu() { openSettings() }
 
-    private func promptInputMonitoring() {
-        Permissions.requestInputMonitoring()
-        let alert = NSAlert()
-        alert.messageText = "Autorise « Surveillance des saisies »"
-        alert.informativeText = """
-        Söyle a besoin de la permission « Surveillance des saisies » (Input Monitoring) \
-        pour détecter ta touche push-to-talk globalement.
-
-        Réglages système → Confidentialité et sécurité → Surveillance des saisies → active Söyle, \
-        puis relance l'app.
-        """
-        alert.addButton(withTitle: "Ouvrir les Réglages")
-        alert.addButton(withTitle: "Plus tard")
-        NSApp.activate(ignoringOtherApps: true)
-        if alert.runModal() == .alertFirstButtonReturn {
-            Permissions.openInputMonitoringSettings()
-        }
-    }
+    private func promptInputMonitoring() { openSettings() }
 
     @objc private func about() {
         let alert = NSAlert()
