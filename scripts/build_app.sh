@@ -42,8 +42,18 @@ if [ ! -d "${APP}/Contents/Resources/mlx-swift_Cmlx.bundle" ]; then
   exit 1
 fi
 
-echo "==> ad-hoc codesign"
-codesign --force --deep --sign - "${APP}"
+echo "==> codesign"
+SIGN_ID="${SOYLE_SIGN_IDENTITY:-}"
+if [ -z "${SIGN_ID}" ] && security find-identity -v -p codesigning 2>/dev/null | grep -q "Söyle Dev"; then
+  SIGN_ID="Söyle Dev"
+fi
+if [ -n "${SIGN_ID}" ]; then
+  echo "    stable identity: ${SIGN_ID}"
+  codesign --force --deep --sign "${SIGN_ID}" "${APP}"
+else
+  echo "    ad-hoc (run scripts/dev_sign_setup.sh for a stable identity that survives rebuilds)"
+  codesign --force --deep --sign - "${APP}"
+fi
 
 echo "OK built ${APP}"
 du -sh "${APP}" | sed 's/^/  size: /'
