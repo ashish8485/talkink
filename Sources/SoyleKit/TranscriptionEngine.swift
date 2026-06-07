@@ -11,9 +11,16 @@ public enum SoyleModel: String, CaseIterable, Sendable {
 
     public var repoID: String { rawValue }
 
-    public var label: String {
+    public var shortLabel: String {
         switch self {
-        case .int8: return "8-bit (recommandé)"
+        case .int8: return "8-bit"
+        case .bf16: return "bf16"
+        }
+    }
+
+    public var menuLabel: String {
+        switch self {
+        case .int8: return "8-bit (rapide, recommandé)"
         case .bf16: return "bf16 (précision max)"
         }
     }
@@ -41,35 +48,54 @@ public enum SoyleError: Error, LocalizedError {
 }
 
 /// Loads the Nemotron model once and transcribes 16 kHz mono audio.
-/// Thread-safety: keep one instance; call `load()` before `transcribe...`.
+/// Call `load()` (async) before transcribing. Safe to call transcribe from a
+/// background queue; MLX evaluation is internally serialized.
 public final class TranscriptionEngine: @unchecked Sendable {
     public private(set) var model: SoyleModel
     private var asr: NemotronASRModel?
+    private let lock = NSLock()
 
     public init(model: SoyleModel = .int8) {
         self.model = model
     }
 
-    public var isLoaded: Bool { asr != nil }
+    public var isLoaded: Bool {
+        lock.lock(); defer { lock.unlock() }
+        return asr != nil
+    }
 
     /// Download (first run) + load weights into memory. Idempotent per model.
     public func load() async throws {
-        if asr != nil { return }
-        asr = try await NemotronASRModel.fromPretrained(model.repoID)
+        if isLoaded { return }
+        let loaded = try await NemotronASRModel.fromPretrained(model.repoID)
+        lock.lock(); asr = loaded; lock.unlock()
     }
 
-    /// Switch model weights, reloading on next `load()`.
+    /// Run a tiny dummy inference to compile/warm the Metal pipeline, so the
+    /// first real transcription isn't penalised by ~2-3s of shader warm-up.
+    public func warmUp() {
+        guard let asr = currentModel() else { return }
+        let silence = [Float](repeating: 0, count: 8_000) // 0.5s @ 16kHz
+        _ = asr.generate(audio: MLXArray(silence), generationParameters: STTGenerateParameters(language: nil))
+    }
+
+    /// Switch model weights; the new weights load on the next `load()`.
     public func switchModel(to newModel: SoyleModel) {
         guard newModel != model else { return }
-        model = newModel
-        asr = nil
+        lock.lock(); model = newModel; asr = nil; lock.unlock()
+    }
+
+    private func currentModel() -> NemotronASRModel? {
+        lock.lock(); defer { lock.unlock() }
+        return asr
     }
 
     /// Transcribe an audio file (any format/rate — resampled to 16 kHz mono).
     /// `language` is a BCP-47 prompt key ("en-US", "fr-FR") or nil for auto.
     public func transcribe(fileURL: URL, language: String?) throws -> SoyleTranscription {
-        guard let asr else { throw SoyleError.modelNotLoaded }
-        let (sr, audio): (Int, MLXArray)
+        guard let asr = currentModel() else { throw SoyleError.modelNotLoaded }
+        let sr: Int
+        let audio: MLXArray
         do {
             (sr, audio) = try loadAudioArray(from: fileURL, sampleRate: 16_000)
         } catch {
@@ -80,7 +106,7 @@ public final class TranscriptionEngine: @unchecked Sendable {
 
     /// Transcribe in-memory float samples already at 16 kHz mono.
     public func transcribe(samples: [Float], language: String?) throws -> SoyleTranscription {
-        guard let asr else { throw SoyleError.modelNotLoaded }
+        guard let asr = currentModel() else { throw SoyleError.modelNotLoaded }
         return run(asr: asr, audio: MLXArray(samples), sampleRate: 16_000, language: language)
     }
 

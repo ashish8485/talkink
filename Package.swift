@@ -5,9 +5,11 @@ let package = Package(
     name: "Soyle",
     platforms: [.macOS(.v14)],
     products: [
-        // CLI used for de-risking, benchmarking and headless transcription.
-        // The menu-bar GUI app is assembled from SoyleKit via scripts/ (see BUILDING.md).
+        // Menu-bar push-to-talk app (assembled into Söyle.app via scripts/build_app.sh).
+        .executable(name: "Soyle", targets: ["Soyle"]),
+        // CLI for de-risking, benchmarking and headless transcription.
         .executable(name: "soyle-cli", targets: ["SoyleCLI"]),
+        // Reusable engine, shared by app + CLI.
         .library(name: "SoyleKit", targets: ["SoyleKit"]),
     ],
     dependencies: [
@@ -19,7 +21,6 @@ let package = Package(
         ),
     ],
     targets: [
-        // Reusable core: the transcription engine, shared by the CLI and the GUI app.
         .target(
             name: "SoyleKit",
             dependencies: [
@@ -27,6 +28,12 @@ let package = Package(
                 .product(name: "MLXAudioCore", package: "mlx-audio-swift"),
             ],
             path: "Sources/SoyleKit",
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
+        .executableTarget(
+            name: "Soyle",
+            dependencies: ["SoyleKit"],
+            path: "Sources/Soyle",
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .executableTarget(
