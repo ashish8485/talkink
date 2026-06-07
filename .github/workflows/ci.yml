@@ -1,9 +1,10 @@
 name: CI
 
+# Manual + PR only (no push trigger) so the repo never shows a red CI run before a
+# GitHub runner with Xcode 26 / Swift 6.2 (required by mlx-audio-swift) is confirmed.
 on:
-  push:
-    branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read

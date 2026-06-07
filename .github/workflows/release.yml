@@ -1,17 +1,21 @@
 name: Release
 
-# Tag a version to cut a release:  git tag v0.1.0 && git push origin v0.1.0
+# Manual for now (run from the Actions tab with a tag like "v0.2.0"). Once a GitHub
+# runner with Xcode 26 / Swift 6.2 is confirmed working, switch to the tag trigger:
+#   on: { push: { tags: ['v*'] } }
+# and use ${GITHUB_REF_NAME} instead of the input.
 on:
-  push:
-    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v0.2.0)'
+        required: true
 
 permissions:
   contents: write
 
 jobs:
   release:
-    # Needs Xcode 26+ (Swift 6.2) for the mlx-audio-swift manifest. Bump the image
-    # if the build fails to resolve the package.
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,18 +32,17 @@ jobs:
 
       - name: Stamp version from the tag
         run: |
-          VER="${GITHUB_REF_NAME#v}"
+          VER="${{ github.event.inputs.tag }}"; VER="${VER#v}"
           PLIST="dist/Söyle.app/Contents/Info.plist"
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${VER}" "$PLIST"
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${GITHUB_RUN_NUMBER}" "$PLIST"
-          # Re-sign: editing Info.plist invalidates the signature.
           codesign --force --sign - "dist/Söyle.app"
           test -f "dist/Söyle.app/Contents/Resources/mlx-swift_Cmlx.bundle/Contents/Resources/default.metallib"
 
-      - name: Zip (ditto preserves signature + symlinks; plain zip corrupts them)
+      - name: Zip (ditto preserves signature + symlinks)
         run: ditto -c -k --keepParent "dist/Söyle.app" "Soyle.zip"
 
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${GITHUB_REF_NAME}" "Soyle.zip" --title "Söyle ${GITHUB_REF_NAME}" --generate-notes
+        run: gh release create "${{ github.event.inputs.tag }}" "Soyle.zip" --title "Söyle ${{ github.event.inputs.tag }}" --generate-notes
