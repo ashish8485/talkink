@@ -1,18 +1,20 @@
 <div align="center">
 
-<img src="assets/icon.png" width="120" alt="Söyle"/>
+<img src="assets/hero.png" alt="Söyle — Say it. It's written." width="880"/>
 
 # Söyle
 
-**Say it. It's written.**
-
-Push-to-talk dictation for macOS that runs **100% on your Mac**.
-Hold a key, speak, release — your speech is transcribed locally and pasted at your
-cursor (and copied to the clipboard). Powered by **NVIDIA Nemotron 3.5 ASR** via **MLX**.
+Push-to-talk dictation for macOS, **100% on-device**. Hold a key, speak, release —
+your text is transcribed locally and pasted right at your cursor. Powered by
+**NVIDIA Nemotron 3.5 ASR** via **MLX**.
 
 ![macOS](https://img.shields.io/badge/macOS-14%2B-black?logo=apple)
 ![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-required-black)
 ![License](https://img.shields.io/badge/license-MIT-76B900)
+
+<br/>
+
+<img src="assets/demo.gif" alt="Hold a key, speak, release — the text is pasted at the cursor" width="760"/>
 
 </div>
 
@@ -36,6 +38,17 @@ cursor (and copied to the clipboard). Powered by **NVIDIA Nemotron 3.5 ASR** via
 5. It's also saved to **History** in case you need it again.
 
 A floating pill (NVIDIA green) shows the state: recording → transcribing → done.
+
+## Screenshots
+
+<p align="center">
+  <img src="assets/screenshot-settings.png" width="380" alt="Settings & permissions"/>
+  &nbsp;&nbsp;
+  <img src="assets/screenshot-menu.png" width="300" alt="Menu bar"/>
+</p>
+
+<p align="center"><i>The recording pill, reacting to your voice:</i></p>
+<p align="center"><img src="assets/pill.gif" width="420" alt="Recording pill"/></p>
 
 ## Install
 
