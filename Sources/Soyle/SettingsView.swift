@@ -1,11 +1,13 @@
 import SwiftUI
+import AppKit
 import SoyleKit
 
-/// Unified onboarding + settings window. Shows permission status (live) with
-/// grant buttons, and all preferences. NVIDIA-green accented.
+/// Onboarding + settings (the "Réglages" tab). Live permission status with grant
+/// buttons, dictation prefs, behaviour, and an update notice. NVIDIA-green accents.
 struct SettingsView: View {
     @ObservedObject var settings: SettingsStore
     @ObservedObject var perms: PermissionsModel
+    @ObservedObject var update = UpdateChecker.shared
 
     var body: some View {
         VStack(spacing: 0) {
@@ -14,12 +16,12 @@ struct SettingsView: View {
             Form {
                 permissionsSection
                 dictationSection
-                feedbackSection
+                behaviourSection
             }
             .formStyle(.grouped)
             footer
         }
-        .frame(width: 480, height: 600)
+        .onAppear { update.check() }
     }
 
     // MARK: Header
@@ -28,73 +30,72 @@ struct SettingsView: View {
         HStack(spacing: 14) {
             ZStack {
                 RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.nvidia)
-                Image(systemName: "mic.fill").font(.system(size: 24, weight: .bold)).foregroundStyle(.black)
+                Image(systemName: "mic.fill").font(.system(size: 23, weight: .bold)).foregroundStyle(.black)
             }
-            .frame(width: 52, height: 52)
+            .frame(width: 50, height: 50)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Söyle").font(.system(size: 24, weight: .bold))
-                Text("Maintiens \(settings.pttKey.displayName), parle, relâche. Le texte est copié.")
+                Text("Söyle").font(.system(size: 22, weight: .bold))
+                Text("Maintiens \(settings.pttKey.displayName), parle, relâche.")
                     .font(.system(size: 12)).foregroundStyle(.secondary)
             }
             Spacer()
         }
-        .padding(18)
+        .padding(16)
     }
 
     // MARK: Permissions
 
     private var permissionsSection: some View {
         Section {
-            permRow(
-                title: "Microphone",
-                granted: perms.microphone,
-                hint: "Pour enregistrer ta voix (rien n'est envoyé sur Internet).",
-                buttonTitle: perms.microphone ? nil : (Permissions.microphoneDenied ? "Ouvrir Réglages" : "Autoriser")
-            ) {
+            permRow(title: "Microphone", granted: perms.microphone,
+                    hint: "Pour enregistrer ta voix (rien n'est envoyé sur Internet).",
+                    button: perms.microphone ? nil : (Permissions.microphoneDenied ? "Ouvrir Réglages" : "Autoriser")) {
                 if Permissions.microphoneDenied { Permissions.openMicrophoneSettings() }
                 else { Permissions.requestMicrophone { _ in perms.refresh() } }
             }
-            permRow(
-                title: "Surveillance des saisies",
-                granted: perms.inputMonitoring,
-                hint: "Pour détecter ta touche globalement. Relance Söyle après activation.",
-                buttonTitle: perms.inputMonitoring ? nil : "Autoriser"
-            ) {
-                Permissions.requestInputMonitoring()
-                Permissions.openInputMonitoringSettings()
+            permRow(title: "Surveillance des saisies", granted: perms.inputMonitoring,
+                    hint: "Pour détecter ta touche globalement. Relance Söyle après activation.",
+                    button: perms.inputMonitoring ? nil : "Autoriser") {
+                Permissions.requestInputMonitoring(); Permissions.openInputMonitoringSettings()
+            }
+            permRow(title: "Accessibilité", granted: perms.accessibility,
+                    hint: "Pour coller automatiquement au curseur. Sans elle, le texte reste dans le presse-papier (⌘V).",
+                    button: perms.accessibility ? nil : "Autoriser") {
+                Permissions.requestAccessibility(); Permissions.openAccessibilitySettings()
             }
         } header: {
             Text("Autorisations")
         } footer: {
-            if perms.allGranted {
-                Label("Tout est prêt.", systemImage: "checkmark.seal.fill")
+            if perms.essentialsGranted {
+                Label(perms.accessibility ? "Tout est prêt." : "Prêt (auto-collage off — presse-papier seul).",
+                      systemImage: "checkmark.seal.fill")
                     .foregroundStyle(Color.nvidia).font(.caption)
             } else {
-                Text("Söyle a besoin de ces deux autorisations pour fonctionner.")
+                Text("Micro + Surveillance des saisies sont nécessaires au fonctionnement.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
     }
 
     private func permRow(title: String, granted: Bool, hint: String,
-                         buttonTitle: String?, action: @escaping () -> Void) -> some View {
+                         button: String?, action: @escaping () -> Void) -> some View {
         HStack(spacing: 12) {
             Image(systemName: granted ? "checkmark.circle.fill" : "circle.dashed")
                 .font(.system(size: 18))
                 .foregroundStyle(granted ? Color.nvidia : Color.secondary)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.system(size: 13, weight: .medium))
-                Text(hint).font(.caption).foregroundStyle(.secondary)
+                Text(hint).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
-            if let buttonTitle {
-                Button(buttonTitle, action: action).buttonStyle(.bordered).tint(.nvidia)
+            if let button {
+                Button(button, action: action).buttonStyle(.bordered).tint(.nvidia)
             }
         }
         .padding(.vertical, 2)
     }
 
-    // MARK: Dictation settings
+    // MARK: Dictation
 
     private var dictationSection: some View {
         Section("Dictée") {
@@ -110,8 +111,11 @@ struct SettingsView: View {
         }
     }
 
-    private var feedbackSection: some View {
-        Section {
+    // MARK: Behaviour
+
+    private var behaviourSection: some View {
+        Section("Comportement") {
+            Toggle("Coller automatiquement au curseur", isOn: $settings.autoPaste)
             Toggle("Sons de retour", isOn: $settings.playSounds)
             Toggle("Lancer au démarrage", isOn: $settings.launchAtLogin)
         }
@@ -120,12 +124,18 @@ struct SettingsView: View {
     // MARK: Footer
 
     private var footer: some View {
-        HStack {
-            Text("v0.1.0 · 100 % local · NVIDIA Nemotron 3.5 + MLX")
-                .font(.caption2).foregroundStyle(.secondary)
+        HStack(spacing: 8) {
+            if let up = update.latest {
+                Image(systemName: "arrow.down.circle.fill").foregroundStyle(Color.nvidia)
+                Text("Nouvelle version v\(up.version)").font(.caption).fontWeight(.semibold)
+                Button("Voir") { NSWorkspace.shared.open(up.url) }.buttonStyle(.link).tint(.nvidia)
+            } else {
+                Text("v\(update.currentVersion) · 100 % local · NVIDIA Nemotron 3.5 + MLX")
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
             Spacer()
         }
         .padding(.horizontal, 18)
-        .padding(.vertical, 10)
+        .padding(.vertical, 9)
     }
 }

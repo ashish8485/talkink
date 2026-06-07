@@ -2,6 +2,7 @@ import Foundation
 import AppKit
 import AVFoundation
 import CoreGraphics
+import ApplicationServices
 
 /// Two permissions are needed (no Accessibility — Söyle is clipboard-only):
 ///  • Microphone — to record.
@@ -44,6 +45,18 @@ enum Permissions {
 
     static func openInputMonitoringSettings() {
         open("x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")
+    }
+
+    // MARK: Accessibility (required to auto-paste — synthetic ⌘V into other apps)
+    static var hasAccessibility: Bool { AXIsProcessTrusted() }
+
+    static func requestAccessibility() {
+        let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
+        _ = AXIsProcessTrustedWithOptions([key: true] as CFDictionary)
+    }
+
+    static func openAccessibilitySettings() {
+        open("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
     }
 
     private static func open(_ urlString: String) {

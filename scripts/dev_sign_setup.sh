@@ -1,22 +1,31 @@
 #!/usr/bin/env bash
-# One-time: create a STABLE self-signed code-signing identity ("Söyle Dev") in the
-# login keychain, so rebuilds keep the same code signature and macOS permission
-# grants (Microphone / Input Monitoring) PERSIST across versions — no more
-# re-authorising after every rebuild.
+# One-time: create a STABLE, trusted self-signed code-signing identity ("Soyle Dev")
+# in the login keychain, so rebuilds keep the same code signature and macOS
+# permission grants (Microphone / Input Monitoring) PERSIST across versions —
+# no more re-authorising after every rebuild.
 #
-# Reversible: delete the cert later in Keychain Access, or:
-#   security delete-identity -c "Söyle Dev" ~/Library/Keychains/login.keychain-db
+# macOS will ask for your login password ONCE (to trust the local cert for code
+# signing). That's expected and safe — it's a local, self-signed dev certificate.
+#
+# Reversible: delete it later in Keychain Access, or:
+#   security delete-identity -c "Soyle Dev" ~/Library/Keychains/login.keychain-db
 set -euo pipefail
 export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 
-IDENTITY="Söyle Dev"
+IDENTITY="Soyle Dev"
 KEYCHAIN="$HOME/Library/Keychains/login.keychain-db"
+OPENSSL=/usr/bin/openssl          # system LibreSSL (Apple-compatible PKCS#12)
+P12PASS=soyle
 
 if security find-identity -v -p codesigning 2>/dev/null | grep -q "$IDENTITY"; then
-  echo "OK: identity '$IDENTITY' already present."
+  echo "OK: '$IDENTITY' is already a valid code-signing identity."
   security find-identity -v -p codesigning | grep "$IDENTITY"
   exit 0
 fi
+
+# Best-effort cleanup of any earlier failed import (ignore errors).
+security delete-identity -c "Soyle Dev" "$KEYCHAIN" >/dev/null 2>&1 || true
+security delete-certificate -c "Söyle Dev" "$KEYCHAIN" >/dev/null 2>&1 || true
 
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 cat > "$TMP/o.cnf" <<CNF
@@ -32,15 +41,24 @@ keyUsage = critical,digitalSignature
 extendedKeyUsage = critical,codeSigning
 CNF
 
-openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
+"$OPENSSL" req -x509 -newkey rsa:2048 -nodes -days 3650 \
   -keyout "$TMP/key.pem" -out "$TMP/cert.pem" -config "$TMP/o.cnf" >/dev/null 2>&1
-openssl pkcs12 -export -inkey "$TMP/key.pem" -in "$TMP/cert.pem" \
-  -out "$TMP/id.p12" -passout pass: >/dev/null 2>&1
+"$OPENSSL" pkcs12 -export -inkey "$TMP/key.pem" -in "$TMP/cert.pem" \
+  -out "$TMP/id.p12" -passout "pass:$P12PASS" >/dev/null 2>&1
 
 # -A: allow all apps to use the key without per-use prompts (local dev key).
-security import "$TMP/id.p12" -k "$KEYCHAIN" -P "" -A -T /usr/bin/codesign
+security import "$TMP/id.p12" -k "$KEYCHAIN" -P "$P12PASS" -A -T /usr/bin/codesign >/dev/null
 
-echo "OK: created code-signing identity '$IDENTITY'."
-security find-identity -v -p codesigning | grep "$IDENTITY" || true
+echo ">>> macOS va demander ton mot de passe pour faire confiance au certificat local (signature de code)."
+echo ">>> Entre ton mot de passe Mac et clique « Mettre à jour les réglages »."
+security add-trusted-cert -r trustRoot -p codeSign -k "$KEYCHAIN" "$TMP/cert.pem"
+
 echo
-echo "If codesign later pops a keychain prompt, click 'Always Allow' once."
+if security find-identity -v -p codesigning | grep -q "$IDENTITY"; then
+  echo "✅ '$IDENTITY' est prêt et valide pour signer."
+  security find-identity -v -p codesigning | grep "$IDENTITY"
+else
+  echo "⚠️  L'identité n'est pas encore valide. Réessaie, ou crée-la via Trousseau d'accès →"
+  echo "    Assistant de certificat → Créer un certificat → 'Soyle Dev', type 'Signature de code'."
+  exit 1
+fi

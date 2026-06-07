@@ -44,8 +44,8 @@ fi
 
 echo "==> codesign"
 SIGN_ID="${SOYLE_SIGN_IDENTITY:-}"
-if [ -z "${SIGN_ID}" ] && security find-identity -v -p codesigning 2>/dev/null | grep -q "Söyle Dev"; then
-  SIGN_ID="Söyle Dev"
+if [ -z "${SIGN_ID}" ] && security find-identity -v -p codesigning 2>/dev/null | grep -q "Soyle Dev"; then
+  SIGN_ID="Soyle Dev"
 fi
 if [ -n "${SIGN_ID}" ]; then
   echo "    stable identity: ${SIGN_ID}"

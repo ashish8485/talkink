@@ -37,6 +37,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         observeSettings()
         requestPermissionsThenStart()
         loadModel()
+
+        UpdateChecker.shared.$latest
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.updateMenu() }
+            .store(in: &cancellables)
+        UpdateChecker.shared.check()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -158,8 +164,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             do {
                 let result = try self.engine.transcribe(samples: samples, language: lang)
                 DispatchQueue.main.async {
-                    if !result.text.isEmpty { Clipboard.copy(result.text) }
-                    self.overlay.show(.done(result.text), autoHideAfter: result.text.isEmpty ? 1.2 : 1.0)
+                    let text = result.text
+                    if !text.isEmpty {
+                        Clipboard.copy(text)                                  // always: paste manually with ⌘V
+                        HistoryStore.shared.add(text: text, language: lang)   // always retrievable in the app
+                        if self.settings.autoPaste { AutoPaster.paste() }     // and auto-insert at the cursor
+                    }
+                    self.overlay.show(.done(text), autoHideAfter: text.isEmpty ? 1.2 : 1.0)
                     self.state = .ready
                 }
             } catch {
@@ -211,6 +222,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             menu.addItem(.separator())
         }
 
+        if let up = UpdateChecker.shared.latest {
+            let mi = item("⬆ Nouvelle version v\(up.version)…", #selector(openUpdate(_:)))
+            mi.representedObject = up.url
+            menu.addItem(mi)
+            menu.addItem(.separator())
+        }
+
         // Language submenu
         let langItem = NSMenuItem(title: "Langue : \(settings.language.displayName)", action: nil, keyEquivalent: "")
         let langMenu = NSMenu()
@@ -252,7 +270,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(sounds)
 
         menu.addItem(.separator())
-        menu.addItem(item("Réglages…", #selector(openSettings), key: ","))
+        menu.addItem(item("Ouvrir Söyle (historique, réglages)…", #selector(openSettings), key: ","))
         menu.addItem(item("À propos de Söyle", #selector(about)))
         menu.addItem(.separator())
         menu.addItem(item("Quitter Söyle", #selector(quit), key: "q"))
@@ -302,6 +320,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func toggleSounds() { settings.playSounds.toggle(); updateMenu() }
 
     @objc private func openSettings() { settingsWindowController.show() }
+
+    @objc private func openUpdate(_ sender: NSMenuItem) {
+        if let url = sender.representedObject as? URL { NSWorkspace.shared.open(url) }
+    }
 
     @objc private func promptInputMonitoringMenu() { openSettings() }
 
