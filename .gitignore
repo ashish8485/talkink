@@ -1,0 +1,18 @@
+# SwiftPM / Xcode build artifacts
+.build/
+.swiftpm/
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# Distribution output
+dist/
+*.app
+*.dmg
+*.zip
+
+# macOS
+.DS_Store
+
+# Local model cache (downloaded on first run, never committed)
+Models/
