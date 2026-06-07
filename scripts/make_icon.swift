@@ -35,7 +35,7 @@ ctx.addPath(bg); ctx.setFillColor(nvidia); ctx.fillPath()
 let cx = S * 0.5
 let bodyW = S * 0.24
 let bodyH = S * 0.40
-let bodyTop = S * 0.62      // CG origin is bottom-left
+let bodyTop = S * 0.78      // CG origin is bottom-left; raised so the mic sits centered
 let bodyBottom = bodyTop - bodyH
 let body = CGRect(x: cx - bodyW/2, y: bodyBottom, width: bodyW, height: bodyH)
 let bodyPath = CGPath(roundedRect: body, cornerWidth: bodyW/2, cornerHeight: bodyW/2, transform: nil)

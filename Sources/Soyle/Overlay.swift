@@ -49,12 +49,18 @@ struct OverlayView: View {
         .padding(.vertical, 12)
         .frame(minWidth: 150)
         .background(
-            Capsule(style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    Capsule(style: .continuous)
-                        .strokeBorder(Color.nvidia.opacity(0.65), lineWidth: 1.2)
-                )
+            ZStack {
+                // Dark HUD so white text stays readable on ANY background (incl. white).
+                Capsule(style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .environment(\.colorScheme, .dark)
+                Capsule(style: .continuous)
+                    .fill(Color.black.opacity(0.55))
+            }
+            .overlay(
+                Capsule(style: .continuous)
+                    .strokeBorder(Color.nvidia.opacity(0.7), lineWidth: 1.2)
+            )
         )
         .compositingGroup()
         .shadow(color: .nvidia.opacity(0.35), radius: 16)
@@ -91,6 +97,7 @@ struct OverlayView: View {
         Text(s)
             .font(.system(size: 13.5, weight: .semibold, design: .rounded))
             .foregroundStyle(.white)
+            .shadow(color: .black.opacity(0.5), radius: 1, y: 0.5)
             .lineLimit(1)
             .fixedSize()
     }
