@@ -39,21 +39,57 @@ A floating pill (NVIDIA green) shows the state: recording → transcribing → d
 
 ## Install
 
-> **Honest note on distribution.** Söyle is open source and **not notarized by Apple** (yet).
-> On macOS Sequoia, a *downloaded* unsigned app is blocked by Gatekeeper on first launch.
-> Two options below — the one-time `xattr` command clears the quarantine flag.
+**Requirements:** Apple Silicon Mac (M1–M4), macOS 14 or later.
 
-### Option 1 — Download (quickest)
+Söyle is open source and **not notarized by Apple** (notarization costs $99/yr — see
+[Is it safe?](#is-it-safe) below). Because of that, macOS shows a one-time security warning
+on first launch. Here's the complete, beginner-friendly walkthrough.
 
-1. Grab the latest `Soyle.zip` from [**Releases**](https://github.com/hasso5703/soyle/releases/latest).
-2. Unzip and move **Söyle.app** to `/Applications`.
-3. Clear the quarantine flag (one time), then open it:
-   ```bash
-   xattr -dr com.apple.quarantine /Applications/Söyle.app
-   open /Applications/Söyle.app
-   ```
+### 1. Download
 
-### Option 2 — Build from source (for developers)
+On the [**latest release**](https://github.com/hasso5703/soyle/releases/latest) page, under
+**Assets**, download **`Soyle.zip`** with your browser.
+
+### 2. Move it to Applications
+
+Double-click `Soyle.zip` to unzip it, then drag **`Söyle.app`** into your **Applications** folder.
+
+### 3. Open it the first time (get past Gatekeeper)
+
+Because the app isn't notarized, macOS blocks the first launch (*"Söyle can't be opened…"*).
+Choose **one** of these — you only do it once:
+
+**Option A — Terminal (one line, easiest):**
+```bash
+xattr -dr com.apple.quarantine /Applications/Söyle.app && open /Applications/Söyle.app
+```
+
+**Option B — No terminal:** double-click **Söyle**, click **Done** on the warning, then open
+ → **System Settings → Privacy & Security**, scroll to *"Söyle was blocked…"*, click
+**Open Anyway**, and confirm with Touch ID / your password.
+
+> <a name="is-it-safe"></a>**Is it safe?** Yes. Söyle is fully open source — you can read every
+> line in this repo and [build it yourself](BUILDING.md). The warning only means Apple hasn't been
+> paid to notarize the download; it says nothing about what the app does. Clearing the quarantine
+> flag is the standard step for any open-source Mac app distributed outside the App Store.
+
+### 4. Grant permissions (the onboarding window guides you)
+
+| Permission | Why | Note |
+|---|---|---|
+| **Microphone** | To hear you | — |
+| **Input Monitoring** | Detect the push-to-talk key everywhere | **Relaunch Söyle after enabling** (macOS requires it) |
+| **Accessibility** *(optional)* | Paste at the cursor | Skip it and Söyle just copies to the clipboard (paste with ⌘V) |
+
+### 5. Use it
+
+On the **first** transcription, Söyle downloads the model (~756 MB) once — you'll see
+*"Loading model…"*. After that: **hold Right Option ⌥, speak, release** → your text appears at
+the cursor and on the clipboard. That's it. 🎤
+
+---
+
+### Build from source (developers)
 
 ```bash
 git clone https://github.com/hasso5703/soyle.git
@@ -62,18 +98,8 @@ scripts/build_app.sh Release
 open dist/Söyle.app
 ```
 
-Requires **Xcode 16+** (the Metal compiler is needed — see [BUILDING.md](BUILDING.md)).
-The model (~756 MB, 8-bit) downloads on first launch.
-
-## Permissions
-
-| Permission | Why | Required? |
-|---|---|---|
-| **Microphone** | Record your voice | Yes |
-| **Input Monitoring** | Detect the push-to-talk key globally | Yes (relaunch Söyle after granting) |
-| **Accessibility** | Auto-paste at the cursor (synthetic ⌘V) | Optional — without it, text stays on the clipboard (paste with ⌘V) |
-
-The onboarding window walks you through these on first launch.
+Requires **full Xcode 16+** (the Metal compiler is needed — see [BUILDING.md](BUILDING.md)).
+A locally built app runs without the Gatekeeper step above.
 
 ## Settings
 
