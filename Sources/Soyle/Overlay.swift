@@ -23,82 +23,146 @@ final class OverlayModel: ObservableObject {
     @Published var level: Float = 0
 }
 
-/// The floating pill shown while recording / transcribing.
+// MARK: - View
+
 struct OverlayView: View {
     @ObservedObject var model: OverlayModel
 
     var body: some View {
-        Group {
-            switch model.state {
-            case .hidden:
-                EmptyView()
-            case .recording:
-                pill {
-                    Waveform(level: model.level)
-                    Text("Parle…").font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white)
-                }
-            case .transcribing:
-                pill {
-                    ProgressView().controlSize(.small).tint(.nvidia)
-                    Text("Transcription…").font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white)
-                }
-            case .done(let text):
-                pill {
-                    Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.nvidia)
-                    Text(text.isEmpty ? "Rien entendu" : "Copié ✓")
-                        .font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
-                }
-            case .error(let msg):
-                pill {
-                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
-                    Text(msg).font(.system(size: 12, weight: .medium)).foregroundStyle(.white)
-                        .lineLimit(1)
-                }
+        ZStack {
+            if model.state != .hidden {
+                pill
+                    .transition(.scale(scale: 0.85, anchor: .bottom)
+                        .combined(with: .opacity)
+                        .combined(with: .move(edge: .bottom)))
             }
         }
-        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: model.state)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)   // center the pill in the panel
+        .animation(.spring(response: 0.36, dampingFraction: 0.7), value: model.state)
+    }
+
+    private var pill: some View {
+        HStack(spacing: 11) {
+            content
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
+        .frame(minWidth: 150)
+        .background(
+            Capsule(style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    Capsule(style: .continuous)
+                        .strokeBorder(Color.nvidia.opacity(0.65), lineWidth: 1.2)
+                )
+        )
+        .compositingGroup()
+        .shadow(color: .nvidia.opacity(0.35), radius: 16)
+        .shadow(color: .black.opacity(0.30), radius: 10, y: 5)
     }
 
     @ViewBuilder
-    private func pill<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
-        HStack(spacing: 10) { content() }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 11)
-            .background(
-                Capsule().fill(.ultraThinMaterial)
-                    .overlay(Capsule().stroke(Color.nvidia.opacity(0.55), lineWidth: 1))
-            )
-            .shadow(color: .black.opacity(0.35), radius: 12, y: 4)
+    private var content: some View {
+        switch model.state {
+        case .hidden:
+            EmptyView()
+        case .recording:
+            RecordingDot()
+            LiveWaveform(level: model.level)
+            label("Parle…")
+        case .transcribing:
+            BouncingDots()
+            label("Transcription…")
+        case .done(let text):
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(Color.nvidia)
+                .transition(.scale.combined(with: .opacity))
+            label(text.isEmpty ? "Rien entendu" : "Copié")
+        case .error(let msg):
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(.orange)
+            label(msg)
+        }
+    }
+
+    private func label(_ s: String) -> some View {
+        Text(s)
+            .font(.system(size: 13.5, weight: .semibold, design: .rounded))
+            .foregroundStyle(.white)
+            .lineLimit(1)
+            .fixedSize()
     }
 }
 
-/// Lightweight live level meter (bars react to mic RMS).
-struct Waveform: View {
+// MARK: - Animated pieces
+
+/// Pulsing green "recording" dot.
+private struct RecordingDot: View {
+    @State private var pulse = false
+    var body: some View {
+        Circle()
+            .fill(Color.nvidia)
+            .frame(width: 9, height: 9)
+            .shadow(color: .nvidia.opacity(0.8), radius: pulse ? 5 : 1)
+            .opacity(pulse ? 1 : 0.4)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 0.65).repeatForever(autoreverses: true)) {
+                    pulse = true
+                }
+            }
+    }
+}
+
+/// Live waveform that breathes continuously and grows with the mic level.
+private struct LiveWaveform: View {
     var level: Float
-    private let bars = 5
+    private let bars = 7
 
     var body: some View {
-        HStack(spacing: 3) {
-            ForEach(0..<bars, id: \.self) { i in
-                Capsule()
-                    .fill(Color.nvidia)
-                    .frame(width: 3, height: height(for: i))
+        TimelineView(.animation) { tl in
+            let t = tl.date.timeIntervalSinceReferenceDate
+            HStack(spacing: 3) {
+                ForEach(0..<bars, id: \.self) { i in
+                    Capsule()
+                        .fill(Color.nvidia)
+                        .frame(width: 3.2, height: height(i, t))
+                }
             }
+            .frame(height: 24)
         }
-        .frame(height: 18)
-        .animation(.easeOut(duration: 0.12), value: level)
     }
 
-    private func height(for index: Int) -> CGFloat {
-        // Center bars taller; modulate by level with a small per-bar phase.
-        let base: CGFloat = 4
-        let lvl = CGFloat(max(0, min(1, level)))
-        let phase: [CGFloat] = [0.55, 0.85, 1.0, 0.8, 0.5]
-        return base + lvl * 16 * phase[index % phase.count]
+    private func height(_ i: Int, _ t: Double) -> CGFloat {
+        let lvl = Double(max(0.05, min(1, level)))
+        let phase = Double(i) * 0.8
+        let wave = (sin(t * 8 + phase) + 1) / 2            // 0...1
+        let amp = 5 + lvl * 19 * (0.45 + 0.55 * wave)
+        return CGFloat(amp)
     }
 }
+
+/// Three green dots bouncing in sequence (transcribing indicator).
+private struct BouncingDots: View {
+    private let n = 3
+    var body: some View {
+        TimelineView(.animation) { tl in
+            let t = tl.date.timeIntervalSinceReferenceDate
+            HStack(spacing: 4) {
+                ForEach(0..<n, id: \.self) { i in
+                    Circle()
+                        .fill(Color.nvidia)
+                        .frame(width: 6.5, height: 6.5)
+                        .offset(y: -CGFloat(max(0, sin(t * 6 - Double(i) * 0.7))) * 5)
+                }
+            }
+            .frame(height: 24)
+        }
+    }
+}
+
+// MARK: - Controller
 
 /// Manages the borderless floating NSPanel that hosts the overlay.
 final class OverlayController {
@@ -106,9 +170,11 @@ final class OverlayController {
     private var panel: NSPanel?
     private var hideWorkItem: DispatchWorkItem?
 
+    private let panelSize = NSSize(width: 340, height: 120)
+
     init() {
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 220, height: 64),
+            contentRect: NSRect(origin: .zero, size: panelSize),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered, defer: true
         )
@@ -122,7 +188,7 @@ final class OverlayController {
         panel.hidesOnDeactivate = false
 
         let host = NSHostingView(rootView: OverlayView(model: model))
-        host.frame = panel.contentView!.bounds
+        host.frame = NSRect(origin: .zero, size: panelSize)
         host.autoresizingMask = [.width, .height]
         panel.contentView = host
         self.panel = panel
@@ -131,8 +197,9 @@ final class OverlayController {
     func show(_ state: OverlayState, autoHideAfter seconds: Double? = nil) {
         DispatchQueue.main.async {
             self.hideWorkItem?.cancel()
+            self.position()
+            self.panel?.orderFrontRegardless()
             self.model.state = state
-            self.positionAndOrder()
             if let seconds {
                 let work = DispatchWorkItem { [weak self] in self?.hide() }
                 self.hideWorkItem = work
@@ -147,18 +214,21 @@ final class OverlayController {
 
     func hide() {
         DispatchQueue.main.async {
-            self.model.state = .hidden
-            self.panel?.orderOut(nil)
+            self.model.state = .hidden               // plays the exit transition
+            let work = DispatchWorkItem { [weak self] in
+                guard let self, self.model.state == .hidden else { return }
+                self.panel?.orderOut(nil)
+            }
+            self.hideWorkItem = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45, execute: work)
         }
     }
 
-    private func positionAndOrder() {
+    private func position() {
         guard let panel, let screen = NSScreen.main else { return }
         let vf = screen.visibleFrame
-        let size = panel.frame.size
-        let x = vf.midX - size.width / 2
-        let y = vf.minY + 96
+        let x = vf.midX - panelSize.width / 2
+        let y = vf.minY + 120
         panel.setFrameOrigin(NSPoint(x: x, y: y))
-        panel.orderFrontRegardless()
     }
 }
