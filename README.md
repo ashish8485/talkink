@@ -52,7 +52,7 @@ A floating pill (NVIDIA green) shows the state: recording → transcribing → d
 
 ## Install
 
-**Requirements:** Apple Silicon Mac (M1–M4), macOS 14 or later.
+**Requirements:** Apple Silicon Mac (M1–M5), macOS 14 or later.
 
 Söyle is open source and **not notarized by Apple** (notarization costs $99/yr — see
 [Is it safe?](#is-it-safe) below). Because of that, macOS shows a one-time security warning
