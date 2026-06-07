@@ -22,6 +22,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var statusItem: NSStatusItem!
     private var cancellables = Set<AnyCancellable>()
+    private var armTimer: Timer?
+    private var modelLoadFailed = false
     private var state: AppState = .loadingModel { didSet { updateMenu(); updateStatusIcon() } }
 
     // MARK: Lifecycle
@@ -42,12 +44,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.updateMenu() }
             .store(in: &cancellables)
-        UpdateChecker.shared.check()
+        if settings.checkForUpdates { UpdateChecker.shared.check() }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         ptt.stop()
         _ = recorder.stop()
+        armTimer?.invalidate()
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        tryRearm()
+        // Recover a failed first-run model load (e.g. offline) without a relaunch.
+        if modelLoadFailed, !engine.isLoaded {
+            loadModel()
+        }
+    }
+
+    // Re-arm the push-to-talk tap once Input Monitoring is granted in-session,
+    // so the user doesn't have to relaunch.
+    private func startArmTimer() {
+        armTimer?.invalidate()
+        armTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { [weak self] _ in
+            self?.tryRearm()
+        }
+    }
+
+    private func tryRearm() {
+        guard state == .needsInputMonitoring, Permissions.hasInputMonitoring else { return }
+        if ptt.start() {
+            armTimer?.invalidate(); armTimer = nil
+            state = engine.isLoaded ? .ready : .loadingModel
+        }
     }
 
     // MARK: Startup helpers
@@ -62,6 +90,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             state = .loadingModel // will flip to .ready once model loads
         } else {
             state = .needsInputMonitoring
+            startArmTimer()       // auto-recover once the grant lands (no relaunch needed)
         }
         // First run, or push-to-talk permission still missing → show onboarding/settings.
         if !settings.hasOnboarded || !Permissions.hasInputMonitoring {
@@ -71,6 +100,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func loadModel() {
+        modelLoadFailed = false
         Task { @MainActor in
             do {
                 try await engine.load()
@@ -78,7 +108,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 if state != .needsInputMonitoring { state = .ready }
                 else { updateMenu() }
             } catch {
-                overlay.show(.error("Échec du chargement du modèle"), autoHideAfter: 3)
+                modelLoadFailed = true
+                overlay.show(.error("Échec du chargement — réessai à la prochaine activation"), autoHideAfter: 3)
             }
         }
     }

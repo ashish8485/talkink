@@ -118,6 +118,7 @@ struct SettingsView: View {
             Toggle("Coller automatiquement au curseur", isOn: $settings.autoPaste)
             Toggle("Sons de retour", isOn: $settings.playSounds)
             Toggle("Lancer au démarrage", isOn: $settings.launchAtLogin)
+            Toggle("Vérifier les mises à jour (GitHub)", isOn: $settings.checkForUpdates)
         }
     }
 

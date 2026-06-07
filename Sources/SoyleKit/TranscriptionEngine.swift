@@ -54,6 +54,7 @@ public final class TranscriptionEngine: @unchecked Sendable {
     public private(set) var model: SoyleModel
     private var asr: NemotronASRModel?
     private let lock = NSLock()
+    private let inferLock = NSLock()   // serialize MLX inference (warmUp vs transcribe must not overlap)
 
     public init(model: SoyleModel = .int8) {
         self.model = model
@@ -76,6 +77,7 @@ public final class TranscriptionEngine: @unchecked Sendable {
     public func warmUp() {
         guard let asr = currentModel() else { return }
         let silence = [Float](repeating: 0, count: 8_000) // 0.5s @ 16kHz
+        inferLock.lock(); defer { inferLock.unlock() }
         _ = asr.generate(audio: MLXArray(silence), generationParameters: STTGenerateParameters(language: nil))
     }
 
@@ -111,10 +113,18 @@ public final class TranscriptionEngine: @unchecked Sendable {
     }
 
     private func run(asr: NemotronASRModel, audio: MLXArray, sampleRate: Int, language: String?) -> SoyleTranscription {
-        let duration = Double(audio.shape[0]) / Double(sampleRate)
+        let frames = audio.shape.first ?? 0
+        let duration = Double(frames) / Double(sampleRate)
+        // Nothing meaningful to transcribe in < 0.1s — avoids feeding a near-empty
+        // array into MLX (untested edge in generate()).
+        guard frames >= 1_600 else {
+            return SoyleTranscription(text: "", language: language, audioSeconds: duration, inferSeconds: 0)
+        }
         let params = STTGenerateParameters(language: language)
         let t0 = CFAbsoluteTimeGetCurrent()
+        inferLock.lock()
         let out = asr.generate(audio: audio, generationParameters: params)
+        inferLock.unlock()
         let infer = CFAbsoluteTimeGetCurrent() - t0
         return SoyleTranscription(
             text: out.text.trimmingCharacters(in: .whitespacesAndNewlines),

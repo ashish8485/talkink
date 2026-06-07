@@ -15,8 +15,6 @@ enum AutoPaster {
         guard Permissions.hasAccessibility else { return .noAccessibility }
         if IsSecureEventInputEnabled() { return .secureField }
 
-        // Fresh source so the user's physically-held modifiers (e.g. the PTT key)
-        // don't contaminate the synthetic ⌘V.
         let src = CGEventSource(stateID: .privateState)
         let v = CGKeyCode(kVK_ANSI_V)
         guard let down = CGEvent(keyboardEventSource: src, virtualKey: v, keyDown: true),
@@ -25,8 +23,12 @@ enum AutoPaster {
 
         down.flags = .maskCommand
         up.flags = .maskCommand
-        down.post(tap: .cghidEventTap)
-        up.post(tap: .cghidEventTap)
+        // Post to the session tap (NOT .cghidEventTap): at the HID layer the OS
+        // OR-combines currently-held hardware modifiers, so a still-held PTT
+        // modifier (Right Option, etc.) would turn this into ⌘⌥V and fail to paste.
+        // The session tap honours our explicit .maskCommand flags verbatim.
+        down.post(tap: .cgAnnotatedSessionEventTap)
+        up.post(tap: .cgAnnotatedSessionEventTap)
         return .pasted
     }
 }

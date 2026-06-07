@@ -41,6 +41,7 @@ final class SettingsStore: ObservableObject {
         static let pttKey = "soyle.pttKey"
         static let playSounds = "soyle.playSounds"
         static let autoPaste = "soyle.autoPaste"
+        static let checkForUpdates = "soyle.checkForUpdates"
         static let hasOnboarded = "soyle.hasOnboarded"
     }
 
@@ -59,6 +60,9 @@ final class SettingsStore: ObservableObject {
     @Published var autoPaste: Bool {
         didSet { defaults.set(autoPaste, forKey: K.autoPaste) }
     }
+    @Published var checkForUpdates: Bool {
+        didSet { defaults.set(checkForUpdates, forKey: K.checkForUpdates) }
+    }
     @Published var launchAtLogin: Bool {
         didSet { applyLoginItem(launchAtLogin) }
     }
@@ -73,6 +77,7 @@ final class SettingsStore: ObservableObject {
         pttKey = PushToTalk.Key(rawValue: keyRaw ?? PushToTalk.Key.rightOption.rawValue) ?? .rightOption
         playSounds = defaults.object(forKey: K.playSounds) as? Bool ?? true
         autoPaste = defaults.object(forKey: K.autoPaste) as? Bool ?? true
+        checkForUpdates = defaults.object(forKey: K.checkForUpdates) as? Bool ?? true
         launchAtLogin = (SMAppService.mainApp.status == .enabled)
         hasOnboarded = defaults.bool(forKey: K.hasOnboarded)
     }
