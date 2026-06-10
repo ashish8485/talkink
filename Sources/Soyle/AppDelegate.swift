@@ -14,7 +14,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private let settings = SettingsStore.shared
-    private let engine = TranscriptionEngine(model: SettingsStore.shared.model)
+    private let engine = TranscriptionEngine(model: SettingsStore.shared.modelOption)
     private let ptt = PushToTalk(key: SettingsStore.shared.pttKey)
     private let recorder = Recorder()
     private let overlay = OverlayController()
@@ -24,6 +24,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var cancellables = Set<AnyCancellable>()
     private var armTimer: Timer?
     private var modelLoadFailed = false
+    private var languageRescues = 0              // empty transcripts rescued by auto-detect
+    private var loadTask: Task<Void, Never>?     // the one tracked selected-model load
     private var pendingStop: DispatchWorkItem?   // release-grace timer (tail capture)
     private var dictationGeneration = 0          // ignore stale transcription completions
     private var state: AppState = .loadingModel(progress: nil) { didSet { updateMenu(); updateStatusIcon() } }
@@ -37,14 +39,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         recorder.onLevel = { [weak self] lvl in self?.overlay.updateLevel(lvl) }
         ptt.onStart = { [weak self] in self?.startRecording() }
         ptt.onStop = { [weak self] in self?.stopRecording() }
-        engine.onDownloadProgress = { [weak self] fraction in
-            guard let self else { return }
-            let pct = min(99, Int(fraction * 100))
-            // Only meaningful while we're in the loading state (first run).
-            if case .loadingModel(let current) = self.state, current != pct {
-                self.state = .loadingModel(progress: pct)
+        // Menu-bar % follows the SELECTED model's download in the center
+        // (downloads of other models run concurrently and don't touch it).
+        ModelDownloadCenter.shared.$states
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] states in
+                guard let self else { return }
+                if case .downloading(let fraction) = states[self.settings.modelID] {
+                    let pct = min(99, Int(fraction * 100))
+                    if case .loadingModel(let current) = self.state, current != pct {
+                        self.state = .loadingModel(progress: pct)
+                    }
+                }
             }
-        }
+            .store(in: &cancellables)
 
         observeSettings()
         requestPermissionsThenStart()
@@ -111,16 +119,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func loadModel() {
+        startModelLoad(of: settings.modelOption)
+    }
+
+    /// One tracked load at a time: selecting another model cancels the wait on
+    /// the previous one (its download keeps running concurrently in the
+    /// center — resumable, never wasted) and the stale task can no longer
+    /// touch UI state thanks to the post-await cancellation guards.
+    private func startModelLoad(of target: ASRModelOption) {
+        loadTask?.cancel()
         modelLoadFailed = false
-        Task { @MainActor in
+        state = .loadingModel(progress: nil)
+        let center = ModelDownloadCenter.shared
+        loadTask = Task { @MainActor in
             do {
+                try await center.ensureDownloaded(target).value
+                guard !Task.isCancelled else { return }
+                center.markPreparing(target)
                 try await engine.load()
+                guard !Task.isCancelled else { center.clearLoadMarker(target); return }
                 await Task.detached(priority: .userInitiated) { [engine] in engine.warmUp() }.value
+                guard !Task.isCancelled else { center.clearLoadMarker(target); return }
                 // A concurrent model switch may have invalidated this load — only
                 // a load whose weights are actually installed flips to .ready.
-                if engine.isLoaded, state != .needsInputMonitoring { state = .ready }
-                else { updateMenu() }
+                if engine.isLoaded {
+                    center.markActive(target)
+                    if state != .needsInputMonitoring { state = .ready } else { updateMenu() }
+                } else {
+                    center.clearLoadMarker(target)
+                }
+            } catch is CancellationError {
+                center.clearLoadMarker(target)
             } catch {
+                center.clearLoadMarker(target)
                 modelLoadFailed = true
                 overlay.show(.error("Load failed — will retry on next activation"), autoHideAfter: 3)
             }
@@ -128,9 +159,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func observeSettings() {
-        settings.$model
+        settings.$modelID
             .dropFirst()
-            .sink { [weak self] newModel in self?.reloadModel(newModel) }
+            .sink { [weak self] id in
+                guard let option = ASRCatalog.option(forID: id) else { return }
+                self?.reloadModel(option)
+            }
             .store(in: &cancellables)
         settings.$pttKey
             .dropFirst()
@@ -141,23 +175,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 _ = self.ptt.start()
             }
             .store(in: &cancellables)
+        // The user adjusted the language — restart the mismatch detector.
+        settings.$language
+            .dropFirst()
+            .sink { [weak self] _ in self?.languageRescues = 0 }
+            .store(in: &cancellables)
     }
 
-    private func reloadModel(_ newModel: SoyleModel) {
+    private func reloadModel(_ newModel: ASRModelOption) {
         // Leaving .recording without stopping the recorder would swallow the
         // PTT release in stopRecording's guard and leave the mic running.
         abortRecordingIfNeeded()
         engine.switchModel(to: newModel)
-        state = .loadingModel(progress: nil)
-        Task { @MainActor in
-            do {
-                try await engine.load()
-                await Task.detached(priority: .userInitiated) { [engine] in engine.warmUp() }.value
-                if engine.isLoaded { state = .ready }
-            } catch {
-                overlay.show(.error("Model failed to load"), autoHideAfter: 3)
-            }
-        }
+        startModelLoad(of: newModel)
     }
 
     // MARK: Recording flow
@@ -237,7 +267,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self else { return }
             do {
-                let result = try self.engine.transcribe(samples: samples, language: lang)
+                var result = try self.engine.transcribe(samples: samples, language: lang)
+                // A model conditioned on the wrong language can return an
+                // EMPTY transcript for perfectly good speech (verified:
+                // Nemotron + sv-SE prompt on French audio → empty). One
+                // silent retry in auto-detect rescues the dictation.
+                if result.text.isEmpty, lang != nil {
+                    let rescue = try self.engine.transcribe(samples: samples, language: nil)
+                    if !rescue.text.isEmpty {
+                        result = rescue
+                        DispatchQueue.main.async { self.noteLanguageRescue() }
+                    }
+                }
                 DispatchQueue.main.async {
                     let text = result.text
                     var pasted = false
@@ -264,6 +305,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     }
                 }
             }
+        }
+    }
+
+    /// Auto-detect had to rescue an empty transcript — the configured
+    /// language doesn't match what's being spoken. After three rescues in a
+    /// row, gently point at the setting (each rescue costs a second pass).
+    private func noteLanguageRescue() {
+        languageRescues += 1
+        guard languageRescues == 3 else { return }
+        let langName = settings.language.displayName
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) { [weak self] in
+            self?.overlay.show(
+                .error("Tip: language is set to \(langName) — Auto would fit your speech better (Settings → Language)."),
+                autoHideAfter: 5)
         }
     }
 
@@ -326,12 +381,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(langItem)
 
         // Model submenu
-        let modelItem = NSMenuItem(title: "Model: \(settings.model.shortLabel)", action: nil, keyEquivalent: "")
+        let modelItem = NSMenuItem(title: "Model: \(settings.modelOption.displayName)", action: nil, keyEquivalent: "")
         let modelMenu = NSMenu()
-        for m in SoyleModel.allCases {
-            let mi = item(m.menuLabel, #selector(selectModel(_:)))
-            mi.representedObject = m.rawValue
-            mi.state = (m == settings.model) ? .on : .off
+        for option in ASRCatalog.options {
+            let suffix = option == ASRCatalog.default ? " — recommended" : ""
+            let mi = item("\(option.displayName)  (\(option.sizeLabel))\(suffix)", #selector(selectModel(_:)))
+            mi.representedObject = option.id
+            mi.state = (option.id == settings.modelID) ? .on : .off
             modelMenu.addItem(mi)
         }
         modelItem.submenu = modelMenu
@@ -371,7 +427,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // show it only if it ever moves.
             guard let pct else { return "⏳ Loading model…" }
             return pct > 0 ? "⏳ Downloading model… \(pct)%"
-                           : "⏳ Downloading model (\(settings.model.approxSize), one-time)…"
+                           : "⏳ Downloading model (\(settings.modelOption.sizeLabel), one-time)…"
         case .ready: return "● Ready — hold \(settings.pttKey.displayName)"
         case .recording: return "🎙 Recording…"
         case .transcribing: return "✍️ Transcribing…"
@@ -395,8 +451,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func selectModel(_ sender: NSMenuItem) {
-        if let raw = sender.representedObject as? String, let m = SoyleModel(rawValue: raw) {
-            settings.model = m
+        if let id = sender.representedObject as? String, ASRCatalog.option(forID: id) != nil {
+            settings.modelID = id
             updateMenu()
         }
     }
@@ -412,6 +468,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openSettings() { settingsWindowController.show() }
 
+    /// Re-opening the app (double-click in Applications, `open`, Dock) while
+    /// it's already running should surface the UI — standard macOS behaviour,
+    /// and the only discoverable "where did it go?" recovery for a menu-bar app.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
+        if !hasVisibleWindows { openSettings() }
+        return true
+    }
+
     @objc private func checkForUpdates() { Updater.shared.checkForUpdates() }
 
     @objc private func promptInputMonitoringMenu() { openSettings() }
@@ -421,7 +485,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func about() {
         let alert = NSAlert()
         alert.messageText = "Talkink"
-        alert.informativeText = "On-device voice dictation (NVIDIA Nemotron 3.5 ASR via MLX).\nHold \(settings.pttKey.displayName), speak, release — the text is pasted at your cursor and copied."
+        alert.informativeText = "On-device voice dictation — \(settings.modelOption.displayName) via Apple MLX.\nHold \(settings.pttKey.displayName), speak, release — the text is pasted at your cursor and copied."
         alert.addButton(withTitle: "OK")
         NSApp.activate(ignoringOtherApps: true)
         alert.runModal()
