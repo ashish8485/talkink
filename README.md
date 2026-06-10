@@ -5,8 +5,8 @@
 # Talkink
 
 Push-to-talk dictation for macOS, **100% on-device**. Hold a key, speak, release —
-your text is transcribed locally and pasted right at your cursor. Powered by
-**NVIDIA Nemotron 3.5 ASR** via **MLX**.
+your text is transcribed locally and pasted right at your cursor. Pick your engine:
+**Qwen3-ASR**, **NVIDIA Nemotron 3.5** or **Voxtral Mini** — all running via **MLX**.
 
 ![macOS](https://img.shields.io/badge/macOS-14%2B-black?logo=apple)
 ![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-required-black)
@@ -113,7 +113,7 @@ Menu bar → **Open Talkink** → *Settings* tab:
 
 Talkink's transcription is 100% on-device. The only network calls are:
 
-1. **First-run model download** (~1.2 GB bf16, or ~756 MB if you pick 8-bit) from Hugging Face into `~/.cache/huggingface`.
+1. **First-run model download** (~2.5 GB for the recommended Qwen3-ASR 1.7B; other catalog options range from 760 MB to 4.1 GB) from Hugging Face into `~/.cache/huggingface`. Downloads are resumable — quit anytime, it continues where it stopped.
 2. **Update check** (optional, toggle in Settings) — a request to the GitHub Releases API at launch. No usage telemetry is sent.
 
 ## Troubleshooting
@@ -129,12 +129,14 @@ Talkink's transcription is 100% on-device. The only network calls are:
 
 | Component | Role | License |
 |---|---|---|
-| [NVIDIA Nemotron 3.5 ASR](https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b) | The model (cache-aware FastConformer-RNNT, 600M, ~40 locales) | NVIDIA model license (OpenMDW-1.1) — see model card |
-| [mlx-audio-swift](https://github.com/Blaizzy/mlx-audio-swift) | Native Swift/MLX implementation of Nemotron (Prince Canuma) | MIT |
-| [mlx-community](https://huggingface.co/mlx-community) | MLX-converted weights (8-bit / bf16) | per model license |
+| [Qwen3-ASR](https://huggingface.co/Qwen) | Default model (1.7B / 0.6B, 30 languages) | Apache 2.0 |
+| [NVIDIA Nemotron 3.5 ASR](https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b) | Lightest/fastest option (cache-aware FastConformer-RNNT, 600M) | NVIDIA model license (OpenMDW-1.1) — see model card |
+| [Voxtral Mini](https://huggingface.co/mistralai) | Alternative engine (4B, 13 languages, auto-detect) | Apache 2.0 |
+| [mlx-audio-swift](https://github.com/Blaizzy/mlx-audio-swift) | Native Swift/MLX STT implementations (Prince Canuma) | MIT |
+| [mlx-community](https://huggingface.co/mlx-community) | MLX-converted weights (8-bit / bf16 / 4-bit) | per model license |
 | [MLX](https://github.com/ml-explore/mlx-swift) | Compute on Apple Silicon (Apple) | MIT |
 
-**The downloaded model is governed by NVIDIA's model license, not MIT.** By using Talkink you agree to it.
+**Each downloaded model is governed by its own license** (see the model cards). By using Talkink you agree to the license of the model(s) you download.
 
 ## Roadmap
 

@@ -1,5 +1,34 @@
 # Changelog
 
+## v0.5.0 — Pick your model
+
+You're no longer married to one speech model: choose between seven, see
+exactly what lives on your Mac, and download several at once.
+
+### Added
+- **Model catalog in Settings** — Qwen3-ASR 1.7B & 0.6B, NVIDIA Nemotron 3.5,
+  Voxtral Mini 4B (8-bit / bf16 / 4-bit variants). Every row shows real size,
+  quality and speed ratings from our own multilingual benchmark, and what's
+  already on this Mac. The recommended default is **Qwen3-ASR 1.7B 8-bit**
+  (best accuracy of everything we measured).
+- **Resumable downloads** — models download with a live byte-accurate progress
+  bar, several at a time, and an interrupted download (quit, crash, Wi-Fi
+  drop) resumes exactly where it stopped ("Resume — 62% here").
+- **Delete models** you no longer use, right from the picker.
+- **27 dictation languages** (was 9) — every one verified against what the
+  models actually support, passed to each engine in its own native format.
+- **Wrong-language rescue** — if the configured language doesn't match what
+  you spoke and the model returns nothing, Talkink silently retries in
+  auto-detect, so your dictation lands anyway (then suggests Auto if it keeps
+  happening).
+- Re-opening the app (Dock, double-click in Applications) now brings up the
+  window, as expected of a Mac app.
+
+### Changed
+- Switching models **frees the old one from memory** (verified: switching
+  away from the 1.7B model releases ~1.6 GB). One model in RAM, never several.
+- Footer and About now name the model you're actually using.
+
 ## v0.4.0 — Söyle becomes **Talkink**
 
 Talk. Ink. New name, new home — same app, same privacy.
