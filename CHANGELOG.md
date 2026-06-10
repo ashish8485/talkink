@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.2.0
 
 ### Fixed
 - The recording pill now appears attached to the window you're dictating into
