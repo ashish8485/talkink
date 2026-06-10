@@ -54,39 +54,22 @@ A floating pill (NVIDIA green) shows the state: recording → transcribing → d
 
 **Requirements:** Apple Silicon Mac (M1–M5), macOS 14 or later.
 
-Söyle is open source and **not notarized by Apple** (notarization costs $99/yr — see
-[Is it safe?](#is-it-safe) below). Because of that, macOS shows a one-time security warning
-on first launch. Here's the complete, beginner-friendly walkthrough.
+### 1. Download & open
 
-### 1. Download
+1. Download **`Soyle.zip`** from the [**latest release**](https://github.com/hasso5703/soyle/releases/latest).
+2. Double-click the zip, drag **`Söyle.app`** into **Applications**, open it. That's it —
+   Söyle is **signed and notarized by Apple** (since v0.3.0), so there is no security warning.
 
-On the [**latest release**](https://github.com/hasso5703/soyle/releases/latest) page, under
-**Assets**, download **`Soyle.zip`** with your browser.
+> <a name="is-it-safe"></a>**Is it safe?** Yes, twice over: the download is notarized by Apple
+> (scanned and ticketed), *and* Söyle is fully open source — you can read every line in this
+> repo and [build it yourself](BUILDING.md).
 
-### 2. Move it to Applications
+> **Updating from v0.1.0 / v0.2.0?** Those early builds were signed differently. After replacing
+> the app, remove Söyle from System Settings → Privacy & Security → *Input Monitoring* and
+> *Accessibility* (− button), then re-add it and re-enable both — one time. From v0.3.0 on,
+> updates install themselves in-app and permissions stick.
 
-Double-click `Soyle.zip` to unzip it, then drag **`Söyle.app`** into your **Applications** folder.
-
-### 3. Open it the first time (get past Gatekeeper)
-
-Because the app isn't notarized, macOS blocks the first launch (*"Söyle can't be opened…"*).
-Choose **one** of these — you only do it once:
-
-**Option A — Terminal (one line, easiest):**
-```bash
-xattr -dr com.apple.quarantine /Applications/Söyle.app && open /Applications/Söyle.app
-```
-
-**Option B — No terminal:** double-click **Söyle**, click **Done** on the warning, then open
- → **System Settings → Privacy & Security**, scroll to *"Söyle was blocked…"*, click
-**Open Anyway**, and confirm with Touch ID / your password.
-
-> <a name="is-it-safe"></a>**Is it safe?** Yes. Söyle is fully open source — you can read every
-> line in this repo and [build it yourself](BUILDING.md). The warning only means Apple hasn't been
-> paid to notarize the download; it says nothing about what the app does. Clearing the quarantine
-> flag is the standard step for any open-source Mac app distributed outside the App Store.
-
-### 4. Grant permissions (the onboarding window guides you)
+### 2. Grant permissions (the onboarding window guides you)
 
 | Permission | Why | Note |
 |---|---|---|
@@ -94,7 +77,7 @@ xattr -dr com.apple.quarantine /Applications/Söyle.app && open /Applications/S�
 | **Input Monitoring** | Detect the push-to-talk key everywhere | Söyle picks the grant up within seconds — relaunch if it doesn't |
 | **Accessibility** *(optional)* | Paste at the cursor | Skip it and Söyle just copies to the clipboard (paste with ⌘V) |
 
-### 5. Use it
+### 3. Use it
 
 On the **first** transcription, Söyle downloads the model (~756 MB) once — you'll see
 *"Loading model…"*. After that: **hold Right Option ⌥, speak, release** → your text appears at
@@ -112,7 +95,7 @@ open dist/Söyle.app
 ```
 
 Requires **full Xcode 16+** (the Metal compiler is needed — see [BUILDING.md](BUILDING.md)).
-A locally built app runs without the Gatekeeper step above.
+A locally built app is signed with your own (or an ad-hoc) identity and runs directly.
 
 ## Settings
 
@@ -133,7 +116,7 @@ Söyle's transcription is 100% on-device. The only network calls are:
 ## Troubleshooting
 
 - **Push-to-talk does nothing** → grant **Input Monitoring** (System Settings → Privacy & Security → Input Monitoring). Söyle re-arms itself within a few seconds; relaunch it if the key still does nothing.
-- **After updating Söyle, the key/auto-paste stopped working** (toggles look on but do nothing) → macOS ties permissions to the app's code signature, which changes between release builds until Söyle is notarized. In System Settings → Privacy & Security, **remove** Söyle from *Input Monitoring* and *Accessibility* (− button), then re-add the new app and re-enable both.
+- **After updating from v0.1.0/v0.2.0, the key/auto-paste stopped working** (toggles look on but do nothing) → macOS ties permissions to the app's code signature, and those early builds were signed differently. In System Settings → Privacy & Security, **remove** Söyle from *Input Monitoring* and *Accessibility* (− button), then re-add the new app and re-enable both. One time — the identity is stable from v0.3.0 on.
 - **It stopped working after rebuilding from source** → ad-hoc signatures change each build; run `scripts/dev_sign_setup.sh` once to create a stable local signing identity so grants persist.
 - **Using Fn / 🌐 as the key** → set System Settings → Keyboard → "Press 🌐 to" = **Do Nothing**.
 - **Model download stalls** → check your connection and `~/.cache/huggingface`.
@@ -152,7 +135,8 @@ Söyle's transcription is 100% on-device. The only network calls are:
 ## Roadmap
 
 - [ ] Live text while you speak (streaming `generateStream`)
-- [ ] Notarized DMG + [Sparkle](https://sparkle-project.org) auto-update + Homebrew cask
+- [x] Notarized + [Sparkle](https://sparkle-project.org) in-app auto-update (v0.3.0)
+- [ ] Homebrew cask
 - [ ] Custom dictionary (proper nouns, jargon)
 - [ ] Hands-free toggle mode
 

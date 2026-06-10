@@ -21,8 +21,9 @@ OUT_ZIP="${1:-dist/Soyle.zip}"
 [ -d "${APP}" ] || { echo "xx ${APP} not found — run scripts/build_app.sh Release first"; exit 1; }
 
 # Notarization requires a Developer ID signature + hardened runtime + timestamp.
-# (Capture once: `grep -q` in a pipefail pipeline SIGPIPEs codesign on match.)
-SIGN_INFO="$(codesign -dv "${APP}" 2>&1)"
+# (Capture once: `grep -q` in a pipefail pipeline SIGPIPEs codesign on match.
+#  -dvv, not -dv: the Authority= lines only print at the second verbosity level.)
+SIGN_INFO="$(codesign -dvv "${APP}" 2>&1)"
 echo "${SIGN_INFO}" | grep -q "flags=0x10000(runtime)" \
   || { echo "xx hardened runtime missing — rebuild with current build_app.sh"; exit 1; }
 echo "${SIGN_INFO}" | grep -q "Authority=Developer ID Application" \
