@@ -91,7 +91,7 @@ xattr -dr com.apple.quarantine /Applications/Söyle.app && open /Applications/S�
 | Permission | Why | Note |
 |---|---|---|
 | **Microphone** | To hear you | — |
-| **Input Monitoring** | Detect the push-to-talk key everywhere | **Relaunch Söyle after enabling** (macOS requires it) |
+| **Input Monitoring** | Detect the push-to-talk key everywhere | Söyle picks the grant up within seconds — relaunch if it doesn't |
 | **Accessibility** *(optional)* | Paste at the cursor | Skip it and Söyle just copies to the clipboard (paste with ⌘V) |
 
 ### 5. Use it
@@ -132,7 +132,7 @@ Söyle's transcription is 100% on-device. The only network calls are:
 
 ## Troubleshooting
 
-- **Push-to-talk does nothing** → grant **Input Monitoring** (System Settings → Privacy & Security → Input Monitoring), then **relaunch** Söyle (the grant only applies after relaunch).
+- **Push-to-talk does nothing** → grant **Input Monitoring** (System Settings → Privacy & Security → Input Monitoring). Söyle re-arms itself within a few seconds; relaunch it if the key still does nothing.
 - **It stopped working after rebuilding from source** → ad-hoc signatures change each build; run `scripts/dev_sign_setup.sh` once to create a stable local signing identity so grants persist.
 - **Using Fn / 🌐 as the key** → set System Settings → Keyboard → "Press 🌐 to" = **Do Nothing**.
 - **Model download stalls** → check your connection and `~/.cache/huggingface`.

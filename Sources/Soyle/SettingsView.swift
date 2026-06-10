@@ -54,7 +54,7 @@ struct SettingsView: View {
                 else { Permissions.requestMicrophone { _ in perms.refresh() } }
             }
             permRow(title: "Input Monitoring", granted: perms.inputMonitoring,
-                    hint: "To detect your key globally. Restart Söyle after enabling.",
+                    hint: "To detect your key globally. Söyle detects the grant automatically — relaunch if it doesn't.",
                     button: perms.inputMonitoring ? nil : "Allow") {
                 Permissions.requestInputMonitoring(); Permissions.openInputMonitoringSettings()
             }

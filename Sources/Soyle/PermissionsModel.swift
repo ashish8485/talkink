@@ -2,7 +2,7 @@ import Foundation
 import Combine
 
 /// Live-updating permission status for the settings/onboarding window.
-/// Polls every second so the UI reflects grants made in System Settings.
+/// Polls every second — but only while the window is visible.
 final class PermissionsModel: ObservableObject {
     @Published var microphone = false
     @Published var inputMonitoring = false
@@ -12,12 +12,24 @@ final class PermissionsModel: ObservableObject {
 
     init() {
         refresh()
+    }
+
+    deinit { timer?.invalidate() }
+
+    /// Poll so the UI reflects grants made in System Settings. Scoped to window
+    /// visibility — no point burning a 1 Hz timer forever in a menu-bar app.
+    func startPolling() {
+        guard timer == nil else { return }
+        refresh()
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             self?.refresh()
         }
     }
 
-    deinit { timer?.invalidate() }
+    func stopPolling() {
+        timer?.invalidate()
+        timer = nil
+    }
 
     func refresh() {
         let mic = Permissions.hasMicrophone

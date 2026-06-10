@@ -4,9 +4,10 @@ import AVFoundation
 import CoreGraphics
 import ApplicationServices
 
-/// Two permissions are needed (no Accessibility — Söyle is clipboard-only):
-///  • Microphone — to record.
-///  • Input Monitoring — for the listen-only global CGEventTap (push-to-talk).
+/// Permissions used by Söyle:
+///  • Microphone — to record (required).
+///  • Input Monitoring — listen-only global CGEventTap for push-to-talk (required).
+///  • Accessibility — auto-paste at the cursor (optional; clipboard-only without it).
 enum Permissions {
 
     // MARK: Microphone
@@ -30,8 +31,8 @@ enum Permissions {
         CGPreflightListenEventAccess()
     }
 
-    /// Prompts once and opens the Input Monitoring pane. The grant only takes
-    /// effect after the app is relaunched.
+    /// Prompts once and opens the Input Monitoring pane. AppDelegate re-arms the
+    /// tap automatically once the grant lands (relaunch only as a fallback).
     static func requestInputMonitoring() {
         if !CGPreflightListenEventAccess() {
             CGRequestListenEventAccess()
