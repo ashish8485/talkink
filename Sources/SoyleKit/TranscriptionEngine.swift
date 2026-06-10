@@ -68,8 +68,20 @@ public final class TranscriptionEngine: @unchecked Sendable {
     /// Download (first run) + load weights into memory. Idempotent per model.
     public func load() async throws {
         if isLoaded { return }
-        let loaded = try await NemotronASRModel.fromPretrained(model.repoID)
-        lock.lock(); asr = loaded; lock.unlock()
+        let target = currentTargetModel()
+        let loaded = try await NemotronASRModel.fromPretrained(target.repoID)
+        install(loaded, ifStillTargeting: target)
+    }
+
+    private func currentTargetModel() -> SoyleModel {
+        lock.lock(); defer { lock.unlock() }
+        return model
+    }
+
+    private func install(_ loaded: NemotronASRModel, ifStillTargeting target: SoyleModel) {
+        lock.lock(); defer { lock.unlock() }
+        // A switchModel() may have raced this load — never install stale weights.
+        if model == target { asr = loaded }
     }
 
     /// Run a tiny dummy inference to compile/warm the Metal pipeline, so the
