@@ -7,17 +7,30 @@ import SoyleKit
 struct SettingsView: View {
     @ObservedObject var settings: SettingsStore
     @ObservedObject var perms: PermissionsModel
+    @ObservedObject var downloads = ModelDownloadCenter.shared
+    @State private var deleteCandidate: ASRModelOption?
 
     var body: some View {
         VStack(spacing: 0) {
             header
             Divider()
-            Form {
-                permissionsSection
-                dictationSection
-                behaviourSection
+            ScrollViewReader { proxy in
+                Form {
+                    permissionsSection
+                    dictationSection
+                    modelSection
+                    behaviourSection
+                }
+                .formStyle(.grouped)
+                .onAppear {
+                    // A download in progress is why the window opened — put it
+                    // on screen instead of leaving it below the fold.
+                    guard downloads.anyDownloading else { return }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                        withAnimation { proxy.scrollTo("model-\(settings.modelID)", anchor: .center) }
+                    }
+                }
             }
-            .formStyle(.grouped)
             footer
         }
     }
@@ -117,8 +130,223 @@ struct SettingsView: View {
             Picker("Language", selection: $settings.language) {
                 ForEach(SoyleLanguage.allCases) { Text($0.displayName).tag($0) }
             }
-            Picker("Model", selection: $settings.model) {
-                ForEach(SoyleModel.allCases, id: \.self) { Text($0.menuLabel).tag($0) }
+        }
+    }
+
+    // MARK: Model picker — full catalog with size / quality / speed, so the
+    // choice is informed (sizes are real weights, ratings from our own bench).
+
+    private var modelSection: some View {
+        Section {
+            ForEach(ASRCatalog.options) { option in
+                modelRow(option)
+                    .id("model-\(option.id)")
+                statusRow(for: option)
+            }
+        } header: {
+            Text("Model")
+        } footer: {
+            Text("Models download once and stay on your Mac — you can grab several at the same time and switch instantly.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    /// The select action (radio + text) and the per-model controls are
+    /// SEPARATE buttons side by side — nesting them made the small controls
+    /// unreliable to hit and easy to mis-tap as "select".
+    private func modelRow(_ option: ASRModelOption) -> some View {
+        HStack(alignment: .top, spacing: 0) {
+            Button {
+                settings.modelID = option.id
+            } label: {
+                HStack(alignment: .top, spacing: 11) {
+                    Image(systemName: settings.modelID == option.id ? "largecircle.fill.circle" : "circle")
+                        .font(.system(size: 15))
+                        .foregroundStyle(settings.modelID == option.id ? Color.nvidia : Color.secondary)
+                        .padding(.top, 1)
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 7) {
+                            Text(option.displayName).font(.system(size: 13, weight: .semibold))
+                            if option == ASRCatalog.default {
+                                Text("RECOMMENDED")
+                                    .font(.system(size: 8.5, weight: .bold))
+                                    .padding(.horizontal, 5).padding(.vertical, 1.5)
+                                    .background(Capsule().fill(Color.nvidia.opacity(0.18)))
+                                    .foregroundStyle(Color.nvidia)
+                            }
+                        }
+                        Text(option.note)
+                            .font(.caption).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        HStack(spacing: 12) {
+                            meter("Quality", option.quality)
+                            meter("Speed", option.speed)
+                        }
+                    }
+                    Spacer(minLength: 8)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            trailingControls(for: option)
+        }
+        .padding(.vertical, 2)
+    }
+
+    /// Right-hand side of a model row: size, on-disk status, and the actions
+    /// that go with it (download / delete / retry).
+    @ViewBuilder
+    private func trailingControls(for option: ASRModelOption) -> some View {
+        VStack(alignment: .trailing, spacing: 4) {
+            Text(option.sizeLabel)
+                .font(.system(size: 11.5, design: .monospaced))
+                .foregroundStyle(.secondary)
+            switch downloads.state(of: option) {
+            case .active:
+                Text("ACTIVE")
+                    .font(.system(size: 8.5, weight: .bold))
+                    .padding(.horizontal, 5).padding(.vertical, 1.5)
+                    .background(Capsule().fill(Color.nvidia))
+                    .foregroundStyle(.black)
+                    .help("The model in use — select another one to free or delete it.")
+            case .preparing:
+                Label("On this Mac", systemImage: "checkmark.circle.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(Color.nvidia)
+            case .downloaded:
+                HStack(spacing: 6) {
+                    Label("On this Mac", systemImage: "checkmark.circle.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(Color.nvidia)
+                    Button {
+                        deleteCandidate = option
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Delete from this Mac (\(option.sizeLabel)) — you can download it again anytime.")
+                }
+            case .downloading(let fraction):
+                Text(String(format: "%.0f%%", fraction * 100))
+                    .font(.system(size: 10, weight: .semibold).monospacedDigit())
+                    .foregroundStyle(Color.nvidia)
+            case .notDownloaded:
+                // One click pre-fetches without switching models — several can
+                // download at once.
+                Button {
+                    downloads.ensureDownloaded(option)
+                } label: {
+                    Label("Download", systemImage: "arrow.down.circle")
+                        .font(.system(size: 10, weight: .medium))
+                }
+                .buttonStyle(.borderless)
+                .tint(.nvidia)
+            case .paused(let fraction):
+                HStack(spacing: 6) {
+                    Button {
+                        downloads.ensureDownloaded(option)
+                    } label: {
+                        Label(String(format: "Resume — %.0f%% here", fraction * 100),
+                              systemImage: "arrow.down.circle")
+                            .font(.system(size: 10, weight: .medium))
+                    }
+                    .buttonStyle(.borderless)
+                    .tint(.nvidia)
+                    .help("The interrupted download is safe on disk — continue where it stopped.")
+                    Button {
+                        deleteCandidate = option
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Discard the partial download.")
+                }
+            case .failed:
+                Button {
+                    downloads.ensureDownloaded(option)
+                } label: {
+                    Label("Retry", systemImage: "arrow.clockwise")
+                        .font(.system(size: 10, weight: .medium))
+                }
+                .buttonStyle(.borderless)
+                .tint(.orange)
+            }
+        }
+        .confirmationDialog(
+            "Delete \(deleteCandidate?.displayName ?? "") (\(deleteCandidate?.sizeLabel ?? "")) from this Mac?",
+            isPresented: Binding(
+                get: { deleteCandidate == option },
+                set: { if !$0 { deleteCandidate = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                if let candidate = deleteCandidate { downloads.deleteFromDisk(candidate) }
+                deleteCandidate = nil
+            }
+            Button("Cancel", role: .cancel) { deleteCandidate = nil }
+        } message: {
+            Text("You can download it again anytime.")
+        }
+    }
+
+    /// Extra row under a model while something is happening to it: live
+    /// progress bar (with cancel) during download, spinner while loading.
+    @ViewBuilder
+    private func statusRow(for option: ASRModelOption) -> some View {
+        switch downloads.state(of: option) {
+        case .downloading(let fraction):
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 4) {
+                    ProgressView(value: max(0.01, fraction))
+                        .tint(.nvidia)
+                    HStack {
+                        Text("Downloading \(option.displayName)…")
+                        Spacer()
+                        Text(String(format: "%.0f%% of %@", fraction * 100, option.sizeLabel))
+                            .monospacedDigit()
+                    }
+                    .font(.caption).foregroundStyle(.secondary)
+                }
+                Button {
+                    downloads.cancelDownload(option)
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Pause — picks up right here next time")
+            }
+            .padding(.leading, 26).padding(.vertical, 3)
+        case .preparing:
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Preparing the model…").font(.caption).foregroundStyle(.secondary)
+            }
+            .padding(.leading, 26).padding(.vertical, 3)
+        case .failed:
+            Label("Download failed — check your connection, then Retry.", systemImage: "exclamationmark.triangle.fill")
+                .font(.caption).foregroundStyle(.orange)
+                .padding(.leading, 26).padding(.vertical, 3)
+        default:
+            EmptyView()
+        }
+    }
+
+    private func meter(_ label: String, _ value: Int) -> some View {
+        HStack(spacing: 4) {
+            Text(label).font(.system(size: 10)).foregroundStyle(.secondary)
+            HStack(spacing: 2) {
+                ForEach(0..<5, id: \.self) { i in
+                    Circle()
+                        .fill(i < value ? Color.nvidia : Color.secondary.opacity(0.25))
+                        .frame(width: 5, height: 5)
+                }
             }
         }
     }
@@ -138,7 +366,8 @@ struct SettingsView: View {
 
     private var footer: some View {
         HStack(spacing: 8) {
-            Text("v\(appVersion) · 100% local · NVIDIA Nemotron 3.5 + MLX")
+            // Reflects the model actually in use — the catalog is multi-engine now.
+            Text("v\(appVersion) · 100% local · \(settings.modelOption.displayName) + MLX")
                 .font(.caption2).foregroundStyle(.secondary)
             Spacer()
         }

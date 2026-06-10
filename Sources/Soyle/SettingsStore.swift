@@ -3,10 +3,21 @@ import Combine
 import ServiceManagement
 import SoyleKit
 
-/// Available transcription languages. `auto` lets Nemotron detect the language.
+/// Available transcription languages — the intersection both prompt-driven
+/// engines support, verified against Nemotron's prompt_dictionary and Qwen3's
+/// config.supportLanguages (real model configs, 2026-06). Stored as BCP-47;
+/// each engine receives its own format via the engine-side mapping.
+/// `auto` lets the model detect the language.
 enum SoyleLanguage: String, CaseIterable, Identifiable {
+    // The original nine first — familiar order for existing users.
     case auto, frFR = "fr-FR", enUS = "en-US", deDE = "de-DE", esES = "es-ES",
-         itIT = "it-IT", ptPT = "pt-PT", trTR = "tr-TR", arSA = "ar-SA", nlNL = "nl-NL"
+         itIT = "it-IT", ptPT = "pt-PT", trTR = "tr-TR", arSA = "ar-SA", nlNL = "nl-NL",
+         // Then the rest, alphabetically by English name.
+         zhCN = "zh-CN", csCZ = "cs-CZ", daDK = "da-DK", fiFI = "fi-FI",
+         elGR = "el-GR", hiIN = "hi-IN", huHU = "hu-HU", idID = "id-ID",
+         jaJP = "ja-JP", koKR = "ko-KR", msMY = "ms-MY", faIR = "fa-IR",
+         plPL = "pl-PL", roRO = "ro-RO", ruRU = "ru-RU", svSE = "sv-SE",
+         thTH = "th-TH", viVN = "vi-VN"
 
     var id: String { rawValue }
 
@@ -25,6 +36,24 @@ enum SoyleLanguage: String, CaseIterable, Identifiable {
         case .trTR: return "Turkish"
         case .arSA: return "Arabic"
         case .nlNL: return "Dutch"
+        case .zhCN: return "Chinese"
+        case .csCZ: return "Czech"
+        case .daDK: return "Danish"
+        case .fiFI: return "Finnish"
+        case .elGR: return "Greek"
+        case .hiIN: return "Hindi"
+        case .huHU: return "Hungarian"
+        case .idID: return "Indonesian"
+        case .jaJP: return "Japanese"
+        case .koKR: return "Korean"
+        case .msMY: return "Malay"
+        case .faIR: return "Persian"
+        case .plPL: return "Polish"
+        case .roRO: return "Romanian"
+        case .ruRU: return "Russian"
+        case .svSE: return "Swedish"
+        case .thTH: return "Thai"
+        case .viVN: return "Vietnamese"
         }
     }
 
@@ -40,6 +69,24 @@ enum SoyleLanguage: String, CaseIterable, Identifiable {
         case .trTR: return "🇹🇷"
         case .arSA: return "🇸🇦"
         case .nlNL: return "🇳🇱"
+        case .zhCN: return "🇨🇳"
+        case .csCZ: return "🇨🇿"
+        case .daDK: return "🇩🇰"
+        case .fiFI: return "🇫🇮"
+        case .elGR: return "🇬🇷"
+        case .hiIN: return "🇮🇳"
+        case .huHU: return "🇭🇺"
+        case .idID: return "🇮🇩"
+        case .jaJP: return "🇯🇵"
+        case .koKR: return "🇰🇷"
+        case .msMY: return "🇲🇾"
+        case .faIR: return "🇮🇷"
+        case .plPL: return "🇵🇱"
+        case .roRO: return "🇷🇴"
+        case .ruRU: return "🇷🇺"
+        case .svSE: return "🇸🇪"
+        case .thTH: return "🇹🇭"
+        case .viVN: return "🇻🇳"
         }
     }
 }
@@ -64,9 +111,12 @@ final class SettingsStore: ObservableObject {
     @Published var language: SoyleLanguage {
         didSet { defaults.set(language.rawValue, forKey: K.language) }
     }
-    @Published var model: SoyleModel {
-        didSet { defaults.set(model.rawValue, forKey: K.model) }
+    /// Selected ASR model, persisted by Hugging Face repo id. Legacy installs
+    /// stored Nemotron repo ids, which still exist in the catalog → seamless.
+    @Published var modelID: String {
+        didSet { defaults.set(modelID, forKey: K.model) }
     }
+    var modelOption: ASRModelOption { ASRCatalog.option(forID: modelID) ?? ASRCatalog.default }
     @Published var pttKey: PushToTalk.Key {
         didSet { defaults.set(pttKey.rawValue, forKey: K.pttKey) }
     }
@@ -91,9 +141,10 @@ final class SettingsStore: ObservableObject {
 
     private init() {
         language = SoyleLanguage(rawValue: defaults.string(forKey: K.language) ?? "") ?? .auto
-        // bf16 by default: real-world speech (accents, room mics) deserves the
-        // quality headroom; 8-bit stays one click away for speed.
-        model = SoyleModel(rawValue: defaults.string(forKey: K.model) ?? "") ?? .bf16
+        // Default = our bench winner (Qwen3-ASR 1.7B 8-bit); unknown stored ids
+        // (e.g. after a future catalog change) also fall back to the default.
+        let storedModel = defaults.string(forKey: K.model) ?? ""
+        modelID = ASRCatalog.option(forID: storedModel)?.id ?? ASRCatalog.default.id
         let keyRaw = defaults.object(forKey: K.pttKey) as? Int
         pttKey = PushToTalk.Key(rawValue: keyRaw ?? PushToTalk.Key.rightOption.rawValue) ?? .rightOption
         playSounds = defaults.object(forKey: K.playSounds) as? Bool ?? true

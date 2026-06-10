@@ -18,8 +18,9 @@ struct RootView: View {
         }
         .frame(width: 500, height: 620)
         .onAppear {
-            // Land on Settings for onboarding when an essential permission is missing.
-            if !perms.essentialsGranted { selection = 1 }
+            // Land on Settings when onboarding is incomplete — or when a model
+            // is downloading, so the progress bars are what the user sees first.
+            if !perms.essentialsGranted || ModelDownloadCenter.shared.anyDownloading { selection = 1 }
         }
         .sheet(isPresented: Binding(
             get: { !settings.hasPickedLanguage },
@@ -49,24 +50,29 @@ struct LanguageOnboardingView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
-            LazyVGrid(columns: columns, spacing: 10) {
-                ForEach(SoyleLanguage.allCases.filter { $0 != .auto }) { lang in
-                    Button {
-                        settings.language = lang
-                        settings.hasPickedLanguage = true
-                    } label: {
-                        VStack(spacing: 5) {
-                            Text(lang.flag).font(.system(size: 26))
-                            Text(lang.displayName).font(.system(size: 12, weight: .semibold))
+            // 27 languages — keep the sheet compact with an inner scroll.
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 10) {
+                    ForEach(SoyleLanguage.allCases.filter { $0 != .auto }) { lang in
+                        Button {
+                            settings.language = lang
+                            settings.hasPickedLanguage = true
+                        } label: {
+                            VStack(spacing: 5) {
+                                Text(lang.flag).font(.system(size: 26))
+                                Text(lang.displayName).font(.system(size: 12, weight: .semibold))
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 11)
+                            .background(RoundedRectangle(cornerRadius: 11).fill(Color.nvidia.opacity(0.10)))
+                            .overlay(RoundedRectangle(cornerRadius: 11).strokeBorder(Color.nvidia.opacity(0.35)))
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 11)
-                        .background(RoundedRectangle(cornerRadius: 11).fill(Color.nvidia.opacity(0.10)))
-                        .overlay(RoundedRectangle(cornerRadius: 11).strokeBorder(Color.nvidia.opacity(0.35)))
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
+                .padding(.vertical, 2)
             }
+            .frame(maxHeight: 320)
 
             Button {
                 settings.language = .auto
