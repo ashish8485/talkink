@@ -13,7 +13,7 @@ enum OverlayState: Equatable {
     case hidden
     case recording
     case transcribing
-    case done(String)
+    case done(String, pasted: Bool)
     case error(String)
 }
 
@@ -79,12 +79,12 @@ struct OverlayView: View {
         case .transcribing:
             BouncingDots()
             label("Transcribing…")
-        case .done(let text):
+        case .done(let text, let pasted):
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(Color.nvidia)
                 .transition(.scale.combined(with: .opacity))
-            label(text.isEmpty ? "Nothing heard" : "Copied")
+            label(text.isEmpty ? "Nothing heard" : (pasted ? "Pasted" : "Copied"))
         case .error(let msg):
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 15, weight: .bold))

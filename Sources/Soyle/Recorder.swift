@@ -45,8 +45,27 @@ final class Recorder {
         isRecording = false
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
+        drainConverter()
         sampleLock.lock(); let out = samples; samples.removeAll(); sampleLock.unlock()
         return out
+    }
+
+    /// Pull whatever the resampler still buffers (filter delay) so the very end
+    /// of the last word isn't dropped.
+    private func drainConverter() {
+        guard let converter,
+              let out = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: 4096) else { return }
+        var err: NSError?
+        let result = converter.convert(to: out, error: &err) { _, status in
+            status.pointee = .endOfStream
+            return nil
+        }
+        if result == .haveData, out.frameLength > 0, let ch = out.floatChannelData {
+            sampleLock.lock()
+            samples.append(contentsOf: UnsafeBufferPointer(start: ch[0], count: Int(out.frameLength)))
+            sampleLock.unlock()
+        }
+        self.converter = nil
     }
 
     // MARK: - Internals

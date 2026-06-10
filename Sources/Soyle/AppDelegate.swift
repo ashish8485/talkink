@@ -24,6 +24,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var cancellables = Set<AnyCancellable>()
     private var armTimer: Timer?
     private var modelLoadFailed = false
+    private var pendingStop: DispatchWorkItem?   // release-grace timer (tail capture)
+    private var dictationGeneration = 0          // ignore stale transcription completions
     private var state: AppState = .loadingModel { didSet { updateMenu(); updateStatusIcon() } }
 
     // MARK: Lifecycle
@@ -49,6 +51,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         ptt.stop()
+        pendingStop?.cancel()
         _ = recorder.stop()
         armTimer?.invalidate()
     }
@@ -105,7 +108,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             do {
                 try await engine.load()
                 await Task.detached(priority: .userInitiated) { [engine] in engine.warmUp() }.value
-                if state != .needsInputMonitoring { state = .ready }
+                // A concurrent model switch may have invalidated this load — only
+                // a load whose weights are actually installed flips to .ready.
+                if engine.isLoaded, state != .needsInputMonitoring { state = .ready }
                 else { updateMenu() }
             } catch {
                 modelLoadFailed = true
@@ -131,13 +136,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func reloadModel(_ newModel: SoyleModel) {
+        // Leaving .recording without stopping the recorder would swallow the
+        // PTT release in stopRecording's guard and leave the mic running.
+        abortRecordingIfNeeded()
         engine.switchModel(to: newModel)
         state = .loadingModel
         Task { @MainActor in
             do {
                 try await engine.load()
                 await Task.detached(priority: .userInitiated) { [engine] in engine.warmUp() }.value
-                state = .ready
+                if engine.isLoaded { state = .ready }
             } catch {
                 overlay.show(.error("Model failed to load"), autoHideAfter: 3)
             }
@@ -147,6 +155,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: Recording flow
 
     private func startRecording() {
+        // Re-pressed during the release-grace window: flush the previous
+        // dictation now and start fresh.
+        if let pending = pendingStop {
+            pending.cancel(); pendingStop = nil
+            finishStop()
+            if state == .transcribing { state = .ready }
+        }
         guard state == .ready else {
             if state == .loadingModel {
                 overlay.show(.error("Model is loading…"), autoHideAfter: 1.5)
@@ -165,6 +180,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         do {
+            if recorder.recording { _ = recorder.stop() }  // defensive: stale session
             try recorder.start()
             state = .recording
             overlay.show(.recording)
@@ -175,19 +191,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func stopRecording() {
-        guard state == .recording else { return }
-        let samples = recorder.stop()
+        guard state == .recording else {
+            // Defensive: never leave the mic running (e.g. if a model switch
+            // yanked us out of .recording mid-hold).
+            if recorder.recording, pendingStop == nil { _ = recorder.stop() }
+            return
+        }
         playSound(start: false)
+        state = .transcribing
+        overlay.show(.transcribing)
 
-        // Ignore accidental taps (< 0.25s of audio).
-        guard samples.count >= 4_000 else {
-            state = .ready
-            overlay.hide()
+        // Keep capturing a short tail: people release the key on the last word,
+        // and the resampler buffers a few extra milliseconds.
+        let work = DispatchWorkItem { [weak self] in self?.finishStop() }
+        pendingStop = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
+    }
+
+    private func finishStop() {
+        pendingStop = nil
+        let samples = recorder.stop()
+
+        // Ignore accidental taps (< 0.25s of speech + the 0.25s tail).
+        guard samples.count >= 8_000 else {
+            if state == .transcribing {
+                state = .ready
+                overlay.hide()
+            }
             return
         }
 
-        state = .transcribing
-        overlay.show(.transcribing)
+        dictationGeneration += 1
+        let gen = dictationGeneration
         let lang = settings.language.engineCode
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
@@ -196,21 +231,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 let result = try self.engine.transcribe(samples: samples, language: lang)
                 DispatchQueue.main.async {
                     let text = result.text
+                    var pasted = false
                     if !text.isEmpty {
                         Clipboard.copy(text)                                  // always: paste manually with ⌘V
-                        HistoryStore.shared.add(text: text, language: lang)   // always retrievable in the app
-                        if self.settings.autoPaste { AutoPaster.paste() }     // and auto-insert at the cursor
+                        if AutoPaster.secureInputActive {
+                            // Likely a password field — keep it out of the on-disk history.
+                        } else {
+                            HistoryStore.shared.add(text: text, language: lang)
+                        }
+                        if self.settings.autoPaste, AutoPaster.paste() == .pasted { pasted = true }
                     }
-                    self.overlay.show(.done(text), autoHideAfter: text.isEmpty ? 1.2 : 1.0)
-                    self.state = .ready
+                    // A newer dictation may already own the UI — don't clobber it.
+                    if self.state == .transcribing, gen == self.dictationGeneration {
+                        self.overlay.show(.done(text, pasted: pasted), autoHideAfter: text.isEmpty ? 1.2 : 1.0)
+                        self.state = .ready
+                    }
                 }
             } catch {
                 DispatchQueue.main.async {
-                    self.overlay.show(.error("Transcription error"), autoHideAfter: 2)
-                    self.state = .ready
+                    if self.state == .transcribing, gen == self.dictationGeneration {
+                        self.overlay.show(.error("Transcription error"), autoHideAfter: 2)
+                        self.state = .ready
+                    }
                 }
             }
         }
+    }
+
+    private func abortRecordingIfNeeded() {
+        pendingStop?.cancel(); pendingStop = nil
+        if recorder.recording { _ = recorder.stop() }
+        if state == .recording { overlay.hide() }
     }
 
     private func playSound(start: Bool) {
@@ -363,7 +414,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func about() {
         let alert = NSAlert()
         alert.messageText = "Söyle"
-        alert.informativeText = "On-device voice dictation (NVIDIA Nemotron 3.5 ASR via MLX).\nHold \(settings.pttKey.displayName), speak, release — the text is copied."
+        alert.informativeText = "On-device voice dictation (NVIDIA Nemotron 3.5 ASR via MLX).\nHold \(settings.pttKey.displayName), speak, release — the text is pasted at your cursor and copied."
         alert.addButton(withTitle: "OK")
         NSApp.activate(ignoringOtherApps: true)
         alert.runModal()

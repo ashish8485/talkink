@@ -8,6 +8,9 @@ enum AutoPaster {
 
     enum Result { case pasted, noAccessibility, secureField }
 
+    /// True while the focused field is a secure input (password) field.
+    static var secureInputActive: Bool { IsSecureEventInputEnabled() }
+
     /// Try to paste. Skips safely when Accessibility isn't granted (can't post
     /// events to other apps) or a secure input field is focused (OS blocks it).
     @discardableResult
