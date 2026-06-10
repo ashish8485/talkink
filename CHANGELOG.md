@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.3.2
+
+### Fixed
+- The app now reliably relaunches after an in-app update. Sparkle's installer
+  agent proved flaky at relaunching an app updated in place (verified on
+  macOS 26; upstream Sparkle #273/#1717): Söyle now spawns its own detached
+  relauncher that waits for the old instance to exit and opens the updated
+  app. Updater errors are also logged for diagnosis.
+
 ## v0.3.1
 
 ### Fixed
