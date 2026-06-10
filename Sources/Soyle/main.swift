@@ -12,6 +12,12 @@ if CommandLine.arguments.contains("--mictest") {
     SelfTest.runMicTest() // never returns
 }
 
+// Headless memory regression check — proves a model switch releases the old
+// weights (MLX active set + buffer cache) instead of stacking models in RAM.
+if CommandLine.arguments.contains("--memtest") {
+    SelfTest.runMemTest() // never returns
+}
+
 let app = NSApplication.shared
 let delegate = AppDelegate()
 app.delegate = delegate
