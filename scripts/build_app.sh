@@ -42,6 +42,16 @@ if [ ! -d "${APP}/Contents/Resources/mlx-swift_Cmlx.bundle" ]; then
   exit 1
 fi
 
+# Embed Sparkle (auto-update). The executable references @rpath/Sparkle.framework.
+if [ -d "${PROD}/Sparkle.framework" ]; then
+  mkdir -p "${APP}/Contents/Frameworks"
+  cp -R "${PROD}/Sparkle.framework" "${APP}/Contents/Frameworks/"
+  install_name_tool -add_rpath "@executable_path/../Frameworks" "${APP}/Contents/MacOS/${EXEC}" 2>/dev/null || true
+else
+  echo "xx Sparkle.framework not found in build products - aborting"
+  exit 1
+fi
+
 echo "==> codesign (hardened runtime + entitlements — required for notarization)"
 SIGN_ID="${SOYLE_SIGN_IDENTITY:-}"
 if [ -z "${SIGN_ID}" ] && security find-identity -v -p codesigning 2>/dev/null | grep -q "Developer ID Application"; then
@@ -61,6 +71,18 @@ case "${SIGN_ID}" in "Developer ID"*) TS_FLAG="--timestamp" ;; esac
 SIGN_TARGET="${SIGN_ID:--}"
 [ -z "${SIGN_ID}" ] && echo "    ad-hoc (run scripts/dev_sign_setup.sh for a stable identity that survives rebuilds)" \
                     || echo "    identity: ${SIGN_ID}"
+SPARKLE_FW="${APP}/Contents/Frameworks/Sparkle.framework"
+if [ -d "${SPARKLE_FW}" ]; then
+  while IFS= read -r -d '' nested; do
+    codesign --force --options runtime "${TS_FLAG}" \
+      --preserve-metadata=entitlements --sign "${SIGN_TARGET}" "${nested}"
+  done < <(find "${SPARKLE_FW}/Versions/B/XPCServices" -name "*.xpc" -maxdepth 1 -print0 2>/dev/null)
+  [ -f "${SPARKLE_FW}/Versions/B/Autoupdate" ] && \
+    codesign --force --options runtime "${TS_FLAG}" --sign "${SIGN_TARGET}" "${SPARKLE_FW}/Versions/B/Autoupdate"
+  [ -d "${SPARKLE_FW}/Versions/B/Updater.app" ] && \
+    codesign --force --options runtime "${TS_FLAG}" --sign "${SIGN_TARGET}" "${SPARKLE_FW}/Versions/B/Updater.app"
+  codesign --force "${TS_FLAG}" --sign "${SIGN_TARGET}" "${SPARKLE_FW}"
+fi
 codesign --force --options runtime "${TS_FLAG}" \
   --entitlements "${ENTITLEMENTS}" --sign "${SIGN_TARGET}" "${APP}"
 codesign --verify --strict "${APP}" && echo "    signature verified"

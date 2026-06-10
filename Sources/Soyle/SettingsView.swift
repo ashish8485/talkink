@@ -7,7 +7,6 @@ import SoyleKit
 struct SettingsView: View {
     @ObservedObject var settings: SettingsStore
     @ObservedObject var perms: PermissionsModel
-    @ObservedObject var update = UpdateChecker.shared
 
     var body: some View {
         VStack(spacing: 0) {
@@ -21,7 +20,6 @@ struct SettingsView: View {
             .formStyle(.grouped)
             footer
         }
-        .onAppear { update.check() }
     }
 
     // MARK: Header
@@ -118,7 +116,7 @@ struct SettingsView: View {
             Toggle("Paste automatically at the cursor", isOn: $settings.autoPaste)
             Toggle("Feedback sounds", isOn: $settings.playSounds)
             Toggle("Launch at login", isOn: $settings.launchAtLogin)
-            Toggle("Check for updates (GitHub)", isOn: $settings.checkForUpdates)
+            Toggle("Check for updates automatically", isOn: $settings.checkForUpdates)
         }
     }
 
@@ -126,17 +124,15 @@ struct SettingsView: View {
 
     private var footer: some View {
         HStack(spacing: 8) {
-            if let up = update.latest {
-                Image(systemName: "arrow.down.circle.fill").foregroundStyle(Color.nvidia)
-                Text("New version v\(up.version)").font(.caption).fontWeight(.semibold)
-                Button("View") { NSWorkspace.shared.open(up.url) }.buttonStyle(.link).tint(.nvidia)
-            } else {
-                Text("v\(update.currentVersion) · 100% local · NVIDIA Nemotron 3.5 + MLX")
-                    .font(.caption2).foregroundStyle(.secondary)
-            }
+            Text("v\(appVersion) · 100% local · NVIDIA Nemotron 3.5 + MLX")
+                .font(.caption2).foregroundStyle(.secondary)
             Spacer()
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 9)
+    }
+
+    private var appVersion: String {
+        (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "dev"
     }
 }

@@ -28,5 +28,11 @@
 	<string>© 2026 Hasan — MIT License</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.productivity</string>
+	<key>SUFeedURL</key>
+	<string>https://raw.githubusercontent.com/hasso5703/soyle/main/appcast.xml</string>
+	<!-- Sparkle EdDSA public key (updates are signed with the private key in
+	     Hasan's login keychain — generated 2026-06-10 by generate_keys). -->
+	<key>SUPublicEDKey</key>
+	<string>CUkR77bQFfz8Y4lkYMtOfCS4wFGbNywJuO3d+12QX2Y=</string>
 </dict>
 </plist>

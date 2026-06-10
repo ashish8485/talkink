@@ -50,11 +50,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         requestPermissionsThenStart()
         loadModel()
 
-        UpdateChecker.shared.$latest
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.updateMenu() }
+        Updater.shared.automaticallyChecksForUpdates = settings.checkForUpdates
+        settings.$checkForUpdates
+            .dropFirst()
+            .sink { Updater.shared.automaticallyChecksForUpdates = $0 }
             .store(in: &cancellables)
-        if settings.checkForUpdates { UpdateChecker.shared.check() }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -313,13 +313,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             menu.addItem(.separator())
         }
 
-        if let up = UpdateChecker.shared.latest {
-            let mi = item("⬆ New version v\(up.version)…", #selector(openUpdate(_:)))
-            mi.representedObject = up.url
-            menu.addItem(mi)
-            menu.addItem(.separator())
-        }
-
         // Language submenu
         let langItem = NSMenuItem(title: "Language: \(settings.language.displayName)", action: nil, keyEquivalent: "")
         let langMenu = NSMenu()
@@ -362,6 +355,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(.separator())
         menu.addItem(item("Open Söyle (history, settings)…", #selector(openSettings), key: ","))
+        menu.addItem(item("Check for Updates…", #selector(checkForUpdates)))
         menu.addItem(item("About Söyle", #selector(about)))
         menu.addItem(.separator())
         menu.addItem(item("Quit Söyle", #selector(quit), key: "q"))
@@ -418,9 +412,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openSettings() { settingsWindowController.show() }
 
-    @objc private func openUpdate(_ sender: NSMenuItem) {
-        if let url = sender.representedObject as? URL { NSWorkspace.shared.open(url) }
-    }
+    @objc private func checkForUpdates() { Updater.shared.checkForUpdates() }
 
     @objc private func promptInputMonitoringMenu() { openSettings() }
 

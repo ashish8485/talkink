@@ -19,6 +19,8 @@ let package = Package(
             url: "https://github.com/Blaizzy/mlx-audio-swift.git",
             revision: "417df212f54b8b4214a9815c1cd2eabb05fd4fdf"
         ),
+        // Auto-updates (appcast + EdDSA-signed deltas). Pinned exact.
+        .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.9.3"),
     ],
     targets: [
         .target(
@@ -32,7 +34,10 @@ let package = Package(
         ),
         .executableTarget(
             name: "Soyle",
-            dependencies: ["SoyleKit"],
+            dependencies: [
+                "SoyleKit",
+                .product(name: "Sparkle", package: "Sparkle"),
+            ],
             path: "Sources/Soyle",
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
