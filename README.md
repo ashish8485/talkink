@@ -12,6 +12,8 @@ your text is transcribed locally and pasted right at your cursor. Powered by
 ![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-required-black)
 ![License](https://img.shields.io/badge/license-MIT-76B900)
 
+### 🌐 **[soyle-ten.vercel.app](https://soyle-ten.vercel.app)** — website & one-click download
+
 <br/>
 
 <img src="assets/demo.gif" alt="Hold a key, speak, release — the text is pasted at the cursor" width="760"/>
