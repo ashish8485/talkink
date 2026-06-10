@@ -41,16 +41,16 @@ jobs:
       - name: Stamp version from the tag
         run: |
           VER="${{ github.event.inputs.tag }}"; VER="${VER#v}"
-          PLIST="dist/Söyle.app/Contents/Info.plist"
+          PLIST="dist/Talkink.app/Contents/Info.plist"
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${VER}" "$PLIST"
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${GITHUB_RUN_NUMBER}" "$PLIST"
-          codesign --force --sign - "dist/Söyle.app"
-          test -f "dist/Söyle.app/Contents/Resources/mlx-swift_Cmlx.bundle/Contents/Resources/default.metallib"
+          codesign --force --sign - "dist/Talkink.app"
+          test -f "dist/Talkink.app/Contents/Resources/mlx-swift_Cmlx.bundle/Contents/Resources/default.metallib"
 
       - name: Zip (ditto preserves signature + symlinks)
-        run: ditto -c -k --keepParent "dist/Söyle.app" "Soyle.zip"
+        run: ditto -c -k --keepParent "dist/Talkink.app" "Talkink.zip"
 
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ github.event.inputs.tag }}" "Soyle.zip" --title "Söyle ${{ github.event.inputs.tag }}" --generate-notes
+        run: gh release create "${{ github.event.inputs.tag }}" "Talkink.zip" --title "Talkink ${{ github.event.inputs.tag }}" --generate-notes

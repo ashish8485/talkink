@@ -23,10 +23,10 @@ jobs:
         with:
           xcode-version: latest-stable
 
-      - name: Build Söyle.app
+      - name: Build Talkink.app
         run: scripts/build_app.sh Release
 
       - name: Verify the Metal library is bundled
         run: |
-          test -f "dist/Söyle.app/Contents/Resources/mlx-swift_Cmlx.bundle/Contents/Resources/default.metallib" \
+          test -f "dist/Talkink.app/Contents/Resources/mlx-swift_Cmlx.bundle/Contents/Resources/default.metallib" \
             && echo "default.metallib bundled ✓"
