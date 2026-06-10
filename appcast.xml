@@ -3,15 +3,15 @@
   <channel>
     <title>Söyle</title>
     <item>
-      <title>Söyle 0.3.0</title>
-      <pubDate>Wed, 10 Jun 2026 11:19:08 +0000</pubDate>
-      <sparkle:version>3</sparkle:version>
-      <sparkle:shortVersionString>0.3.0</sparkle:shortVersionString>
+      <title>Söyle 0.3.1</title>
+      <pubDate>Wed, 10 Jun 2026 11:49:02 +0000</pubDate>
+      <sparkle:version>4</sparkle:version>
+      <sparkle:shortVersionString>0.3.1</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-      <sparkle:releaseNotesLink>https://github.com/hasso5703/soyle/releases/tag/v0.3.0</sparkle:releaseNotesLink>
+      <sparkle:releaseNotesLink>https://github.com/hasso5703/soyle/releases/tag/v0.3.1</sparkle:releaseNotesLink>
       <enclosure
-        url="https://github.com/hasso5703/soyle/releases/download/v0.3.0/Soyle.zip"
-        sparkle:edSignature="lBv2wSlK2khrCR142ikoRUZVTAgGMYEF/c14wP276Ca78C6KdLtbykCq69ba4HEsI/AjZkHgHTx5J8clzZjsAQ==" length="11495216"
+        url="https://github.com/hasso5703/soyle/releases/download/v0.3.1/Soyle.zip"
+        sparkle:edSignature="tP7IHdhml9Di4z7E0KqXjWNZaGX1Jc5NFXd+JIcbVUjfVFjVPyesOcvOqWtl+At4HOsZxS9NT7ZqYSoIB8XbDg==" length="11496220"
         type="application/octet-stream"/>
     </item>
   </channel>
