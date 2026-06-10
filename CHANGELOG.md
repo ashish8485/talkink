@@ -1,5 +1,37 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- The recording pill now appears attached to the window you're dictating into
+  (focused window via Accessibility, window-list fallback — no new permission)
+  instead of a fixed spot at the bottom of the primary screen. It used to land
+  on whatever window sat behind when the active window was small, and on the
+  wrong display on multi-screen setups. Fullscreen Spaces verified unaffected.
+- The microphone can no longer be left recording: switching models mid-hold
+  orphaned the recorder (mic stayed hot, the next dictation shipped minutes of
+  background audio to the model). Every exit path now stops it.
+- The end of the last word is no longer clipped — capture continues 0.25s
+  after the key is released and the resampler's buffered tail is drained.
+- Releasing the push-to-talk key while the other key of the same modifier was
+  also held (e.g. both Options) no longer leaves the recording stuck on.
+- Switching models while a load is in flight can no longer install stale
+  weights or show Ready with the wrong model; stale transcription completions
+  can't clobber a newer dictation's UI.
+
+### Privacy
+- Text dictated into a secure (password) field stays out of the on-disk
+  history — clipboard only.
+
+### Changed
+- The pill says "Pasted" when auto-paste actually inserted at the cursor,
+  "Copied" otherwise.
+- Permission status is polled only while the Söyle window is open.
+- Input Monitoring guidance reflects the in-session re-arm (relaunch is a
+  fallback); README documents the permission re-grant needed after updating
+  a non-notarized build.
+- `soyle-cli` accepts multiple audio files in a single run (one model load).
+
 ## v0.1.0
 
 First release. Local push-to-talk dictation for Apple Silicon, powered by NVIDIA
