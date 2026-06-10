@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.3.1
+
+### Fixed
+- Worked around a macOS 26 (Tahoe) issue — also hitting Karabiner-Elements and
+  others — where answering the Input Monitoring prompt does not add the app to
+  the list: Söyle now opens the right Settings pane **and** reveals Söyle.app
+  in the Finder so you can drag it straight into the list; onboarding hints
+  explain the manual add.
+
+### Changed
+- Downloads now ship as a **drag-to-Applications DMG** (notarized + stapled),
+  alongside the zip used by the in-app updater.
+
 ## v0.3.0
 
 ### Distribution

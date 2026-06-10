@@ -54,11 +54,12 @@ A floating pill (NVIDIA green) shows the state: recording → transcribing → d
 
 **Requirements:** Apple Silicon Mac (M1–M5), macOS 14 or later.
 
-### 1. Download & open
+### 1. Download & install
 
-1. Download **`Soyle.zip`** from the [**latest release**](https://github.com/hasso5703/soyle/releases/latest).
-2. Double-click the zip, drag **`Söyle.app`** into **Applications**, open it. That's it —
-   Söyle is **signed and notarized by Apple** (since v0.3.0), so there is no security warning.
+1. Download **`Soyle.dmg`** from the [**latest release**](https://github.com/hasso5703/soyle/releases/latest).
+2. Open it and drag **Söyle** onto the **Applications** folder, then eject the disk image.
+3. Launch Söyle from Applications. No security warning — Söyle is **signed and
+   notarized by Apple** (since v0.3.0).
 
 > <a name="is-it-safe"></a>**Is it safe?** Yes, twice over: the download is notarized by Apple
 > (scanned and ticketed), *and* Söyle is fully open source — you can read every line in this
@@ -74,7 +75,7 @@ A floating pill (NVIDIA green) shows the state: recording → transcribing → d
 | Permission | Why | Note |
 |---|---|---|
 | **Microphone** | To hear you | — |
-| **Input Monitoring** | Detect the push-to-talk key everywhere | Söyle picks the grant up within seconds — relaunch if it doesn't |
+| **Input Monitoring** | Detect the push-to-talk key everywhere | On macOS 26 you may need to add Söyle yourself: “+” or drag Söyle.app into the list (Söyle opens the pane and a Finder window for you) |
 | **Accessibility** *(optional)* | Paste at the cursor | Skip it and Söyle just copies to the clipboard (paste with ⌘V) |
 
 ### 3. Use it
@@ -116,6 +117,7 @@ Söyle's transcription is 100% on-device. The only network calls are:
 ## Troubleshooting
 
 - **Push-to-talk does nothing** → grant **Input Monitoring** (System Settings → Privacy & Security → Input Monitoring). Söyle re-arms itself within a few seconds; relaunch it if the key still does nothing.
+- **Söyle doesn't appear in the Input Monitoring list** → a macOS 26 issue that hits many apps (Karabiner-Elements included): answering the permission prompt doesn't register the app. Click **“+”** in the list (or drag `Söyle.app` into it), then enable the toggle.
 - **After updating from v0.1.0/v0.2.0, the key/auto-paste stopped working** (toggles look on but do nothing) → macOS ties permissions to the app's code signature, and those early builds were signed differently. In System Settings → Privacy & Security, **remove** Söyle from *Input Monitoring* and *Accessibility* (− button), then re-add the new app and re-enable both. One time — the identity is stable from v0.3.0 on.
 - **It stopped working after rebuilding from source** → ad-hoc signatures change each build; run `scripts/dev_sign_setup.sh` once to create a stable local signing identity so grants persist.
 - **Using Fn / 🌐 as the key** → set System Settings → Keyboard → "Press 🌐 to" = **Do Nothing**.

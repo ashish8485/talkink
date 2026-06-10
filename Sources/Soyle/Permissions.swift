@@ -39,6 +39,13 @@ enum Permissions {
         }
     }
 
+    /// Reveal Söyle.app in a Finder window, so the user can drag it straight
+    /// into the Input Monitoring list (on macOS 26 answering the system prompt
+    /// no longer registers the app there — verified — manual add is the path).
+    static func revealAppInFinder() {
+        NSWorkspace.shared.activateFileViewerSelecting([Bundle.main.bundleURL])
+    }
+
     // MARK: Settings deep-links
     static func openMicrophoneSettings() {
         open("x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")

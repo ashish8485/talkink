@@ -52,14 +52,28 @@ struct SettingsView: View {
                 else { Permissions.requestMicrophone { _ in perms.refresh() } }
             }
             permRow(title: "Input Monitoring", granted: perms.inputMonitoring,
-                    hint: "To detect your key globally. Söyle detects the grant automatically — relaunch if it doesn't.",
+                    hint: "To detect your key globally. macOS may not list Söyle by itself — drag Söyle.app from the Finder window into the list (or use “+”), then enable it.",
                     button: perms.inputMonitoring ? nil : "Allow") {
-                Permissions.requestInputMonitoring(); Permissions.openInputMonitoringSettings()
+                // On macOS 26, answering the system prompt no longer adds the
+                // app to the Input Monitoring list (verified with clean TCC
+                // identities) — so we open the pane AND reveal Söyle.app in the
+                // Finder for a direct drag into the list. The request still
+                // fires for macOS versions where it registers properly.
+                Permissions.requestInputMonitoring()
+                Permissions.openInputMonitoringSettings()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                    if !Permissions.hasInputMonitoring { Permissions.revealAppInFinder() }
+                }
             }
             permRow(title: "Accessibility", granted: perms.accessibility,
-                    hint: "To paste automatically at the cursor. Without it, the text stays in the clipboard (⌘V).",
+                    hint: "To paste automatically at the cursor. Without it, the text stays in the clipboard (⌘V). Not in the list? Add Söyle with “+”.",
                     button: perms.accessibility ? nil : "Allow") {
-                Permissions.requestAccessibility(); Permissions.openAccessibilitySettings()
+                // The AX prompt has its own "Open System Settings" button;
+                // ours is only the fallback.
+                Permissions.requestAccessibility()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    if !Permissions.hasAccessibility { Permissions.openAccessibilitySettings() }
+                }
             }
         } header: {
             Text("Permissions")
