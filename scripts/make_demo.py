@@ -48,6 +48,7 @@ def font(size, weight=None, path=SF):
 F_TITLE = font(34, "Semibold")
 F_BODY = font(52)
 F_BODY_BOLD = font(58, "Semibold")
+F_EXPLAIN = font(44)
 # Real pill label: 13.5pt semibold rounded → ~2.3x for video legibility.
 F_PILL = font(31, "Semibold", SF_ROUNDED)
 F_LOGO = font(110, "Bold")
@@ -56,6 +57,8 @@ F_SMALL = font(34)
 F_CAPTION = font(36, "Medium")
 
 SENTENCE = "Can you send me the commercial report before noon tomorrow?"
+EXPLAINER = ("Push-to-talk dictation for your Mac. Hold a key, speak, release — "
+             "your words appear at your cursor, in any app. 100% on-device.")
 
 # Timeline (seconds)
 T_PILL_IN = 0.7
@@ -100,7 +103,7 @@ BG = background()
 APP_ICON = Image.open(ICON).convert("RGBA")
 
 # Window fills the frame; the pill will overlap its bottom edge (real anchor).
-WIN = (40, 40, W - 40, 760)
+WIN = (40, 40, W - 40, 780)
 PAD = 56
 PILL_CY = WIN[3] - 86          # "just above the window's bottom edge"
 CAPTION_Y = 960
@@ -118,10 +121,13 @@ def draw_window(img, t):
 
     x = WIN[0] + PAD
     y = WIN[1] + 124
-    d.text((x, y), "Q3 planning", font=F_BODY_BOLD, fill=(28, 28, 30))
-    y += 96
-    d.text((x, y), "Follow-ups:", font=F_BODY, fill=(90, 90, 95))
-    y += 86
+    d.text((x, y), "Talkink", font=F_BODY_BOLD, fill=(28, 28, 30))
+    y += 100
+    # The note explains the app itself — the demo is self-contained.
+    for line in wrap(d, EXPLAINER, F_EXPLAIN, WIN[2] - WIN[0] - 2 * PAD):
+        d.text((x, y), line, font=F_EXPLAIN, fill=(105, 105, 110))
+        y += 58
+    y += 42
 
     pasted = t >= T_PASTE
     caret_x, caret_y = x, y
