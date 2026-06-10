@@ -42,18 +42,28 @@ if [ ! -d "${APP}/Contents/Resources/mlx-swift_Cmlx.bundle" ]; then
   exit 1
 fi
 
-echo "==> codesign"
+echo "==> codesign (hardened runtime + entitlements — required for notarization)"
 SIGN_ID="${SOYLE_SIGN_IDENTITY:-}"
+if [ -z "${SIGN_ID}" ] && security find-identity -v -p codesigning 2>/dev/null | grep -q "Developer ID Application"; then
+  SIGN_ID="Developer ID Application"
+fi
 if [ -z "${SIGN_ID}" ] && security find-identity -v -p codesigning 2>/dev/null | grep -q "Soyle Dev"; then
   SIGN_ID="Soyle Dev"
 fi
-if [ -n "${SIGN_ID}" ]; then
-  echo "    stable identity: ${SIGN_ID}"
-  codesign --force --deep --sign "${SIGN_ID}" "${APP}"
-else
-  echo "    ad-hoc (run scripts/dev_sign_setup.sh for a stable identity that survives rebuilds)"
-  codesign --force --deep --sign - "${APP}"
-fi
+ENTITLEMENTS="${ROOT}/packaging/Soyle.entitlements"
+# A secure timestamp is required for notarization but needs a real CA-backed
+# identity; skip it for ad-hoc/self-signed dev builds.
+TS_FLAG="--timestamp=none"
+case "${SIGN_ID}" in "Developer ID"*) TS_FLAG="--timestamp" ;; esac
+# No --deep: Apple deprecated it; nested components are signed individually,
+# inside-out (Sparkle's pre-signed pieces must be re-signed with OUR identity
+# for notarization — the procedure from Sparkle's sandboxing/signing docs).
+SIGN_TARGET="${SIGN_ID:--}"
+[ -z "${SIGN_ID}" ] && echo "    ad-hoc (run scripts/dev_sign_setup.sh for a stable identity that survives rebuilds)" \
+                    || echo "    identity: ${SIGN_ID}"
+codesign --force --options runtime "${TS_FLAG}" \
+  --entitlements "${ENTITLEMENTS}" --sign "${SIGN_TARGET}" "${APP}"
+codesign --verify --strict "${APP}" && echo "    signature verified"
 
 echo "OK built ${APP}"
 du -sh "${APP}" | sed 's/^/  size: /'

@@ -1,4 +1,5 @@
 import Foundation
+import AVFoundation
 import SoyleKit
 
 /// Headless verification used by scripts/CI: loads the model and transcribes a
@@ -31,5 +32,27 @@ enum SelfTest {
         }
         sem.wait()
         exit(code)
+    }
+
+    /// Records ~1.2s from the default microphone and reports the sample count —
+    /// proves capture works (incl. the audio-input entitlement on hardened
+    /// runtime builds). Usage: Söyle.app/Contents/MacOS/Soyle --mictest
+    static func runMicTest() -> Never {
+        let status = AVCaptureDevice.authorizationStatus(for: .audio)
+        FileHandle.standardError.write(Data("[mictest] mic TCC status=\(status.rawValue) (3=authorized)\n".utf8))
+        let recorder = Recorder()
+        do {
+            try recorder.start()
+        } catch {
+            FileHandle.standardError.write(Data("[mictest] ERROR starting capture: \(error)\n".utf8))
+            exit(1)
+        }
+        Thread.sleep(forTimeInterval: 1.2)
+        let samples = recorder.stop()
+        let rms = samples.isEmpty ? 0 : (samples.reduce(Float(0)) { $0 + $1 * $1 } / Float(samples.count)).squareRoot()
+        FileHandle.standardError.write(Data(String(
+            format: "[mictest] captured %d samples (%.2fs @16kHz) rms=%.5f\n",
+            samples.count, Double(samples.count) / 16_000, rms).utf8))
+        exit(samples.count > 8_000 ? 0 : 1)
     }
 }
