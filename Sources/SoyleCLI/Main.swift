@@ -4,14 +4,18 @@ import MLXAudioSTT
 import MLXAudioCore
 import SoyleKit
 
-// Talkink CLI — headless transcription + benchmarking harness for the Nemotron engine.
-// usage: soyle-cli [--model REPO | --bf16] [--lang fr-FR] [--stream] AUDIO [AUDIO…]
+// Talkink CLI — headless transcription + multi-engine ASR benchmarking harness.
+// usage: soyle-cli [--engine nemotron|qwen3|voxtral] [--model REPO | --bf16]
+//                  [--lang fr-FR] [--stream] AUDIO [AUDIO…]
 @main
 struct SoyleCLI {
     static func err(_ s: String) { FileHandle.standardError.write(Data(s.utf8)) }
 
+    static let usage = "usage: soyle-cli [--engine nemotron|qwen3|voxtral] [--model REPO | --bf16] [--lang fr-FR] [--stream] AUDIO [AUDIO…]\n"
+
     static func main() async {
-        var model = SoyleModel.int8.repoID
+        var engine = "nemotron"
+        var modelOverride: String?
         var language: String?
         var audioPaths: [String] = []
         var stream = false
@@ -19,26 +23,42 @@ struct SoyleCLI {
         var it = CommandLine.arguments.dropFirst().makeIterator()
         while let arg = it.next() {
             switch arg {
-            case "--model": if let v = it.next() { model = v }
-            case "--bf16": model = SoyleModel.bf16.repoID
+            case "--engine": if let v = it.next() { engine = v }
+            case "--model": if let v = it.next() { modelOverride = v }
+            case "--bf16": modelOverride = "mlx-community/nemotron-3.5-asr-streaming-0.6b"
             case "--lang", "--language": if let v = it.next() { language = v }
             case "--stream": stream = true
             case "-h", "--help":
-                err("usage: soyle-cli [--model REPO | --bf16] [--lang fr-FR] [--stream] AUDIO [AUDIO…]\n")
+                err(usage)
                 return
             default: if !arg.hasPrefix("-") { audioPaths.append(arg) }
             }
         }
 
         guard !audioPaths.isEmpty else {
-            err("usage: soyle-cli [--model REPO | --bf16] [--lang fr-FR] [--stream] AUDIO [AUDIO…]\n")
+            err(usage)
+            exit(2)
+        }
+
+        let model: String
+        switch engine {
+        case "qwen3":    model = modelOverride ?? "mlx-community/Qwen3-ASR-1.7B-8bit"
+        case "voxtral":  model = modelOverride ?? "mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit"
+        case "nemotron": model = modelOverride ?? "mlx-community/nemotron-3.5-asr-streaming-0.6b-8bit"
+        default:
+            err("unknown engine '\(engine)'\n\(usage)")
             exit(2)
         }
 
         do {
-            err("Loading model: \(model)\n")
+            err("Loading [\(engine)] \(model)\n")
             let t0 = CFAbsoluteTimeGetCurrent()
-            let asr = try await NemotronASRModel.fromPretrained(model)
+            let asr: any STTGenerationModel
+            switch engine {
+            case "qwen3":   asr = try await Qwen3ASRModel.fromPretrained(model)
+            case "voxtral": asr = try await VoxtralRealtimeModel.fromPretrained(model)
+            default:        asr = try await NemotronASRModel.fromPretrained(model)
+            }
             err(String(format: "  loaded in %.1fs\n", CFAbsoluteTimeGetCurrent() - t0))
 
             for audioPath in audioPaths {
