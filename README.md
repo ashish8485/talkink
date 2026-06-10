@@ -133,6 +133,7 @@ Söyle's transcription is 100% on-device. The only network calls are:
 ## Troubleshooting
 
 - **Push-to-talk does nothing** → grant **Input Monitoring** (System Settings → Privacy & Security → Input Monitoring). Söyle re-arms itself within a few seconds; relaunch it if the key still does nothing.
+- **After updating Söyle, the key/auto-paste stopped working** (toggles look on but do nothing) → macOS ties permissions to the app's code signature, which changes between release builds until Söyle is notarized. In System Settings → Privacy & Security, **remove** Söyle from *Input Monitoring* and *Accessibility* (− button), then re-add the new app and re-enable both.
 - **It stopped working after rebuilding from source** → ad-hoc signatures change each build; run `scripts/dev_sign_setup.sh` once to create a stable local signing identity so grants persist.
 - **Using Fn / 🌐 as the key** → set System Settings → Keyboard → "Press 🌐 to" = **Do Nothing**.
 - **Model download stalls** → check your connection and `~/.cache/huggingface`.
