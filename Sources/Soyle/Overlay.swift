@@ -232,10 +232,31 @@ final class OverlayController {
     }
 
     private func position() {
-        guard let panel, let screen = NSScreen.main else { return }
-        let vf = screen.visibleFrame
-        let x = vf.midX - panelSize.width / 2
-        let y = vf.minY + 120
-        panel.setFrameOrigin(NSPoint(x: x, y: y))
+        guard let panel else { return }
+        // Anchor the pill to the window the user is dictating into — a fixed
+        // screen-bottom anchor lands on whatever window sits behind when the
+        // active window is small, and on the wrong display on multi-screen
+        // setups (NSScreen.main is OUR key window's screen, not the user's).
+        let window = WindowLocator.activeWindowFrame()
+        let screen = window.flatMap { w in NSScreen.screens.first { $0.frame.intersects(w) } }
+            ?? screenWithMouse() ?? NSScreen.main ?? NSScreen.screens.first
+        guard let vf = screen?.visibleFrame, vf.width > 0 else { return }
+
+        var pillCenter: NSPoint
+        if let w = window {
+            pillCenter = NSPoint(x: w.midX, y: w.minY + 76)    // just above the window's bottom edge
+        } else {
+            pillCenter = NSPoint(x: vf.midX, y: vf.minY + 180) // bottom-center of the screen
+        }
+        // Keep the pill comfortably on screen.
+        pillCenter.x = min(max(pillCenter.x, vf.minX + panelSize.width / 2), vf.maxX - panelSize.width / 2)
+        pillCenter.y = min(max(pillCenter.y, vf.minY + 84), vf.maxY - 84)
+        panel.setFrameOrigin(NSPoint(x: pillCenter.x - panelSize.width / 2,
+                                     y: pillCenter.y - panelSize.height / 2))
+    }
+
+    private func screenWithMouse() -> NSScreen? {
+        let mouse = NSEvent.mouseLocation
+        return NSScreen.screens.first { $0.frame.contains(mouse) }
     }
 }
