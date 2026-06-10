@@ -24,6 +24,27 @@ final class PushToTalk {
             }
         }
 
+        /// NX_DEVICE*KEYMASK bits (IOKit/hidsystem/IOLLEvent.h) — the only way to
+        /// tell the left and right instance of a modifier apart when BOTH are
+        /// held (the generic mask stays set while either one is down).
+        var deviceMask: UInt64? {
+            switch self {
+            case .leftOption:   return 0x0000_0020 // NX_DEVICELALTKEYMASK
+            case .rightOption:  return 0x0000_0040 // NX_DEVICERALTKEYMASK
+            case .rightControl: return 0x0000_2000 // NX_DEVICERCTLKEYMASK
+            case .fn:           return nil         // no left/right variant
+            }
+        }
+
+        /// Both device bits (left | right) of this key's modifier class.
+        var deviceClassMask: UInt64 {
+            switch self {
+            case .leftOption, .rightOption: return 0x0000_0060
+            case .rightControl:             return 0x0000_2001
+            case .fn:                       return 0
+            }
+        }
+
         var displayName: String {
             switch self {
             case .rightOption: return "Right Option ⌥"
@@ -112,16 +133,36 @@ final class PushToTalk {
         }
 
         let keyCode = Int(event.getIntegerValueField(.keyboardEventKeycode))
+        let autorepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
+        if let down = Self.interpret(type: type, keyCode: keyCode, flags: event.flags,
+                                     autorepeat: autorepeat, key: key) {
+            setDown(down)
+        }
+    }
 
-        if type == .flagsChanged {
-            guard keyCode == key.rawValue else { return }
-            // For a modifier, the flag bit present = pressed, cleared = released.
-            setDown(event.flags.contains(key.flagMask))
-        } else if type == .keyDown, keyCode == key.rawValue {
+    /// Pure press/release decision for `key`, nil if the event is irrelevant.
+    /// Static and side-effect-free so it can be exercised by tests.
+    static func interpret(type: CGEventType, keyCode: Int, flags: CGEventFlags,
+                          autorepeat: Bool, key: Key) -> Bool? {
+        guard keyCode == key.rawValue else { return nil }
+        switch type {
+        case .flagsChanged:
+            // For a modifier, the generic flag present = pressed… except when the
+            // OTHER side of the same modifier is also held (releasing ours keeps
+            // the generic bit set). The device (L/R) bits disambiguate; trust
+            // them only when present — remappers may strip them.
+            let generic = flags.contains(key.flagMask)
+            if generic, let dev = key.deviceMask, flags.rawValue & key.deviceClassMask != 0 {
+                return flags.rawValue & dev != 0
+            }
+            return generic
+        case .keyDown:
             // Plain (non-modifier) key path; ignore auto-repeat.
-            if event.getIntegerValueField(.keyboardEventAutorepeat) == 0 { setDown(true) }
-        } else if type == .keyUp, keyCode == key.rawValue {
-            setDown(false)
+            return autorepeat ? nil : true
+        case .keyUp:
+            return false
+        default:
+            return nil
         }
     }
 
