@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Söyle — Say it. It's written. | Private dictation for Mac</title>
+<meta name="description" content="Push-to-talk dictation for macOS, 100% on-device. Hold a key, speak, release — your words appear right where your cursor is. Free, private, open source.">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/icon-256.png">
+<meta name="theme-color" content="#070908">
+<meta property="og:title" content="Söyle — Say it. It's written.">
+<meta property="og:description" content="Private push-to-talk dictation for Mac. 100% on-device, free and open source.">
+<meta property="og:image" content="https://soyle-ten.vercel.app/assets/og.png">
+<meta property="og:url" content="https://soyle-ten.vercel.app">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800&family=Fragment+Mono&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="glow glow-a" aria-hidden="true"></div>
+<div class="glow glow-b" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+
+<nav class="nav glass">
+  <a class="brand" href="#top">
+    <img src="assets/icon-256.png" alt="" width="28" height="28">
+    <span>Söyle</span>
+  </a>
+  <div class="nav-links">
+    <a href="#how">How it works</a>
+    <a href="#install">Install</a>
+    <a href="#faq">FAQ</a>
+    <a href="https://github.com/hasso5703/soyle" target="_blank" rel="noopener" aria-label="GitHub">
+      <svg class="gh" viewBox="0 0 16 16" width="18" height="18" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+    </a>
+  </div>
+  <a class="btn btn-small" href="https://github.com/hasso5703/soyle/releases/latest/download/Soyle.dmg">Download</a>
+</nav>
+
+<header class="hero" id="top">
+  <p class="eyebrow reveal"><span class="dot"></span>100% on-device · free &amp; open source</p>
+  <h1 class="reveal d1">
+    <span class="say">Say it.</span>
+    <em class="written">It’s written.</em>
+  </h1>
+  <p class="sub reveal d2">Hold a key. Speak. Release. Your words appear right where your
+  cursor is — in any app. Nothing ever leaves your&nbsp;Mac.</p>
+
+  <div class="cta reveal d3">
+    <a class="btn btn-hero" href="https://github.com/hasso5703/soyle/releases/latest/download/Soyle.dmg">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m6 11 6 6 6-6"/><path d="M5 21h14"/></svg>
+      Download for Mac
+    </a>
+    <p class="cta-meta">Free · macOS 14+ · Apple Silicon (M1–M5)</p>
+  </div>
+
+  <div class="stage reveal d4">
+    <div class="pill" role="img" aria-label="Söyle recording pill: speak">
+      <span class="rec-dot"></span>
+      <span class="wave" aria-hidden="true">
+        <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      </span>
+      <span class="pill-label">Speak…</span>
+    </div>
+    <div class="typeline" aria-hidden="true">
+      <span class="typed">Söyle types this for you — right at your cursor.</span><span class="caret"></span>
+    </div>
+  </div>
+</header>
+
+<section class="demo reveal-on-scroll" aria-label="Demo">
+  <figure class="window glass-strong">
+    <figcaption class="window-bar">
+      <span class="tl r"></span><span class="tl y"></span><span class="tl g"></span>
+      <span class="window-title">Söyle in action</span>
+    </figcaption>
+    <img src="assets/demo.gif" alt="Demo: holding the key, speaking, and the text appearing at the cursor" width="760" height="475">
+  </figure>
+</section>
+
+<section class="how" id="how">
+  <h2 class="reveal-on-scroll"><span class="h-say">As simple as</span> <em class="h-written">speaking.</em></h2>
+  <div class="steps">
+    <article class="card glass reveal-on-scroll">
+      <span class="num">1</span>
+      <div class="step-visual"><kbd class="keycap">⌥<small>option</small></kbd></div>
+      <h3>Hold the key</h3>
+      <p>Press and hold Right&nbsp;Option — from any app, any window. The green pill appears.</p>
+    </article>
+    <article class="card glass reveal-on-scroll d1">
+      <span class="num">2</span>
+      <div class="step-visual">
+        <span class="mini-wave"><i></i><i></i><i></i><i></i><i></i></span>
+      </div>
+      <h3>Speak naturally</h3>
+      <p>English, French, Turkish… ~40 languages, detected automatically. Punctuation included.</p>
+    </article>
+    <article class="card glass reveal-on-scroll d2">
+      <span class="num">3</span>
+      <div class="step-visual"><span class="typed-mini">done.</span></div>
+      <h3>Release — it’s typed</h3>
+      <p>Your words are pasted at your cursor in well under a second. That’s the whole workflow.</p>
+    </article>
+  </div>
+</section>
+
+<section class="privacy reveal-on-scroll" aria-label="Privacy">
+  <div class="privacy-band glass-strong">
+    <h2><em>Your voice never leaves your&nbsp;Mac.</em></h2>
+    <p>Söyle runs NVIDIA’s Nemotron speech model directly on your Apple&nbsp;Silicon chip.
+    No cloud. No account. No subscription. No telemetry. The code is open — anyone can check.</p>
+    <ul class="badges">
+      <li>No cloud</li><li>No account</li><li>No subscription</li><li>MIT open source</li>
+    </ul>
+  </div>
+</section>
+
+<section class="features" id="features">
+  <h2 class="reveal-on-scroll"><span class="h-say">Small app.</span> <em class="h-written">Serious engine.</em></h2>
+  <div class="grid">
+    <article class="card glass reveal-on-scroll">
+      <svg viewBox="0 0 24 24"><path d="M12 3a4 4 0 0 1 4 4v4a4 4 0 0 1-8 0V7a4 4 0 0 1 4-4Z"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>
+      <h3>Works everywhere</h3>
+      <p>Mail, Slack, Word, your browser, your code editor — if you can type there, you can speak there.</p>
+    </article>
+    <article class="card glass reveal-on-scroll">
+      <svg viewBox="0 0 24 24"><path d="m13 2-8 11h6l-2 9 8-11h-6l2-9Z"/></svg>
+      <h3>Instant</h3>
+      <p>30–40× faster than real time on an M-series chip. Release the key, the text is already there.</p>
+    </article>
+    <article class="card glass reveal-on-scroll">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.7 3.8 9S14.5 18.4 12 21M12 3C9.5 5.6 8.2 8.7 8.2 12s1.3 6.4 3.8 9"/></svg>
+      <h3>~40 languages</h3>
+      <p>Speak in your language — or mix them. Söyle detects it automatically, with punctuation and capitals.</p>
+    </article>
+    <article class="card glass reveal-on-scroll">
+      <svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="14" rx="3"/><path d="M9 6V5a3 3 0 0 1 6 0v1"/><circle cx="12" cy="13" r="1.6"/></svg>
+      <h3>Private by design</h3>
+      <p>The speech model lives on your Mac. Your audio is processed locally and never uploaded — to anyone.</p>
+    </article>
+    <article class="card glass reveal-on-scroll">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+      <h3>History, kept by you</h3>
+      <p>Every transcription is saved on your machine — searchable and re-copyable from the app.</p>
+    </article>
+    <article class="card glass reveal-on-scroll">
+      <svg viewBox="0 0 24 24"><path d="M12 21s-7-4.6-9.3-9.1C.9 8.4 3 5 6.4 5c2 0 3.5 1 4.4 2.4l1.2 1.7 1.2-1.7C14.1 6 15.6 5 17.6 5 21 5 23.1 8.4 21.3 11.9 19 16.4 12 21 12 21Z"/></svg>
+      <h3>Free, forever-yours</h3>
+      <p>Open source under MIT. Updates install themselves. No license, no lock-in, no catch.</p>
+    </article>
+  </div>
+</section>
+
+<section class="install" id="install">
+  <h2 class="reveal-on-scroll"><span class="h-say">Installed in</span> <em class="h-written">one minute.</em></h2>
+  <ol class="install-steps">
+    <li class="card glass reveal-on-scroll">
+      <span class="num">1</span>
+      <h3>Download</h3>
+      <p><a class="inline-link" href="https://github.com/hasso5703/soyle/releases/latest/download/Soyle.dmg">Grab Soyle.dmg</a> and open it.</p>
+    </li>
+    <li class="card glass reveal-on-scroll d1">
+      <span class="num">2</span>
+      <h3>Drag to Applications</h3>
+      <div class="drag-visual" aria-hidden="true">
+        <img src="assets/icon-256.png" alt="" width="44" height="44">
+        <svg class="arrow" viewBox="0 0 24 24"><path d="M4 12h14m0 0-5-5m5 5-5 5"/></svg>
+        <svg class="folder" viewBox="0 0 24 24"><path d="M3 8a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8Z"/></svg>
+      </div>
+      <p>The classic Mac move. No warnings — Söyle is notarized by&nbsp;Apple.</p>
+    </li>
+    <li class="card glass reveal-on-scroll d2">
+      <span class="num">3</span>
+      <h3>Speak</h3>
+      <p>Söyle guides you through two quick permission toggles, then: hold&nbsp;<kbd class="kbd-inline">⌥</kbd>, talk, release.</p>
+    </li>
+  </ol>
+  <p class="install-note reveal-on-scroll">First dictation downloads the speech model once (~756&nbsp;MB) — Söyle shows you the progress. After that, everything is instant and offline.</p>
+</section>
+
+<section class="tour reveal-on-scroll" aria-label="Screenshots">
+  <figure class="shot glass-strong"><img src="assets/screenshot-settings.png" alt="Söyle settings window with permissions and dictation preferences"></figure>
+  <figure class="shot glass-strong shot-b"><img src="assets/screenshot-menu.png" alt="Söyle menu bar with language, model and shortcut options"></figure>
+</section>
+
+<section class="faq" id="faq">
+  <h2 class="reveal-on-scroll"><span class="h-say">Questions,</span> <em class="h-written">answered.</em></h2>
+  <div class="faq-list reveal-on-scroll">
+    <details class="glass">
+      <summary>Is it really free?</summary>
+      <p>Yes — completely. Söyle is open source (MIT). No trial, no premium tier, no account. It exists because dictation shouldn’t require a subscription or sending your voice to a server.</p>
+    </details>
+    <details class="glass">
+      <summary>Does my voice get uploaded anywhere?</summary>
+      <p>Never. Transcription runs entirely on your Mac’s chip. Söyle only touches the network to download the speech model once, and to check for app updates. You can verify this — every line of code is public.</p>
+    </details>
+    <details class="glass">
+      <summary>Why does macOS ask for permissions?</summary>
+      <p>Two are needed: <strong>Microphone</strong> (to hear you) and <strong>Input Monitoring</strong> (to detect your push-to-talk key in any app). A third, <strong>Accessibility</strong>, is optional — it lets Söyle paste text at your cursor. Söyle’s welcome screen walks you through each one.</p>
+    </details>
+    <details class="glass">
+      <summary>Which Macs does it work on?</summary>
+      <p>Any Apple&nbsp;Silicon Mac (M1 through M5) on macOS&nbsp;14 or newer. Intel Macs aren’t supported — the on-device AI relies on Apple’s ML acceleration.</p>
+    </details>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="footer-inner glass">
+    <div class="f-brand">
+      <img src="assets/icon-256.png" alt="" width="32" height="32">
+      <div><strong>Söyle</strong><span>Say it. It’s written.</span></div>
+    </div>
+    <div class="f-links">
+      <a href="https://github.com/hasso5703/soyle" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/hasso5703/soyle/releases" target="_blank" rel="noopener">Releases</a>
+      <a href="https://github.com/hasso5703/soyle/issues" target="_blank" rel="noopener">Support</a>
+    </div>
+    <p class="f-fine">Free &amp; open source · MIT license<br>Powered by NVIDIA Nemotron&nbsp;ASR + Apple&nbsp;MLX</p>
+  </div>
+</footer>
+
+<script>
+document.documentElement.classList.add('js');
+const els = document.querySelectorAll('.reveal-on-scroll');
+const io = new IntersectionObserver((entries) => {
+  for (const e of entries) if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+}, { threshold: 0.18 });
+els.forEach(el => io.observe(el));
+// Safety net: whatever happens, everything is visible after 2.5s on screen.
+setTimeout(() => els.forEach(el => el.classList.add('in')), 2500);
+</script>
+</body>
+</html>
