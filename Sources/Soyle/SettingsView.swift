@@ -52,7 +52,7 @@ struct SettingsView: View {
                 else { Permissions.requestMicrophone { _ in perms.refresh() } }
             }
             permRow(title: "Input Monitoring", granted: perms.inputMonitoring,
-                    hint: "To detect your key globally. macOS may not list Söyle by itself — drag Söyle.app from the Finder window into the list (or use “+”), then enable it.",
+                    hint: "To detect your key. In the list that opens: click “+”, choose Söyle in Applications, then switch it on.",
                     button: perms.inputMonitoring ? nil : "Allow") {
                 // On macOS 26, answering the system prompt no longer adds the
                 // app to the Input Monitoring list (verified with clean TCC

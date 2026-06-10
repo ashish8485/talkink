@@ -27,6 +27,21 @@ enum SoyleLanguage: String, CaseIterable, Identifiable {
         case .nlNL: return "Dutch"
         }
     }
+
+    var flag: String {
+        switch self {
+        case .auto: return "🌐"
+        case .frFR: return "🇫🇷"
+        case .enUS: return "🇬🇧"
+        case .deDE: return "🇩🇪"
+        case .esES: return "🇪🇸"
+        case .itIT: return "🇮🇹"
+        case .ptPT: return "🇵🇹"
+        case .trTR: return "🇹🇷"
+        case .arSA: return "🇸🇦"
+        case .nlNL: return "🇳🇱"
+        }
+    }
 }
 
 /// User preferences, persisted in UserDefaults. Defaults are sane for everyone;
@@ -43,6 +58,7 @@ final class SettingsStore: ObservableObject {
         static let autoPaste = "soyle.autoPaste"
         static let checkForUpdates = "soyle.checkForUpdates"
         static let hasOnboarded = "soyle.hasOnboarded"
+        static let hasPickedLanguage = "soyle.hasPickedLanguage"
     }
 
     @Published var language: SoyleLanguage {
@@ -69,10 +85,15 @@ final class SettingsStore: ObservableObject {
     @Published var hasOnboarded: Bool {
         didSet { defaults.set(hasOnboarded, forKey: K.hasOnboarded) }
     }
+    @Published var hasPickedLanguage: Bool {
+        didSet { defaults.set(hasPickedLanguage, forKey: K.hasPickedLanguage) }
+    }
 
     private init() {
         language = SoyleLanguage(rawValue: defaults.string(forKey: K.language) ?? "") ?? .auto
-        model = SoyleModel(rawValue: defaults.string(forKey: K.model) ?? "") ?? .int8
+        // bf16 by default: real-world speech (accents, room mics) deserves the
+        // quality headroom; 8-bit stays one click away for speed.
+        model = SoyleModel(rawValue: defaults.string(forKey: K.model) ?? "") ?? .bf16
         let keyRaw = defaults.object(forKey: K.pttKey) as? Int
         pttKey = PushToTalk.Key(rawValue: keyRaw ?? PushToTalk.Key.rightOption.rawValue) ?? .rightOption
         playSounds = defaults.object(forKey: K.playSounds) as? Bool ?? true
@@ -80,6 +101,7 @@ final class SettingsStore: ObservableObject {
         checkForUpdates = defaults.object(forKey: K.checkForUpdates) as? Bool ?? true
         launchAtLogin = (SMAppService.mainApp.status == .enabled)
         hasOnboarded = defaults.bool(forKey: K.hasOnboarded)
+        hasPickedLanguage = defaults.bool(forKey: K.hasPickedLanguage)
     }
 
     private func applyLoginItem(_ on: Bool) {

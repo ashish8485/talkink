@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.3.3
+
+First-real-user release — every change below comes from watching a
+non-technical person install and use Söyle.
+
+### Changed
+- **First launch now asks which language you'll speak** (changeable anytime):
+  an explicit language transcribes noticeably better than auto-detect.
+- **bf16 model is the default** (best quality; ~1.2 GB one-time download) —
+  8-bit stays available in Settings for maximum speed.
+- **The DMG teaches the install**: branded background, "Drag into
+  Applications" with the icons positioned around an arrow.
+- Input Monitoring onboarding now leads with the “+” instruction (macOS 26
+  never lists apps by itself).
+
 ## v0.3.2
 
 ### Fixed

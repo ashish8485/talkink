@@ -82,7 +82,7 @@ A floating pill (NVIDIA green) shows the state: recording → transcribing → d
 
 ### 3. Use it
 
-On the **first** transcription, Söyle downloads the model (~756 MB) once — you'll see
+On the **first** transcription, Söyle downloads the model (~1.2 GB) once — you'll see
 *"Loading model…"*. After that: **hold Right Option ⌥, speak, release** → your text appears at
 the cursor and on the clipboard. That's it. 🎤
 
@@ -106,14 +106,14 @@ Menu bar → **Open Söyle** → *Settings* tab:
 
 - **Push-to-talk key** — Right Option (default), Left Option, Right Control, or Fn / 🌐.
 - **Language** — Auto (detect) or a fixed locale.
-- **Model** — **8-bit** (default, fast) or **bf16** (max accuracy).
+- **Model** — **bf16** (default, best quality) or **8-bit** (fastest).
 - **Auto-paste at cursor**, feedback sounds, launch at login, check for updates.
 
 ## Network activity
 
 Söyle's transcription is 100% on-device. The only network calls are:
 
-1. **First-run model download** (~756 MB) from Hugging Face into `~/.cache/huggingface`.
+1. **First-run model download** (~1.2 GB bf16, or ~756 MB if you pick 8-bit) from Hugging Face into `~/.cache/huggingface`.
 2. **Update check** (optional, toggle in Settings) — a request to the GitHub Releases API at launch. No usage telemetry is sent.
 
 ## Troubleshooting

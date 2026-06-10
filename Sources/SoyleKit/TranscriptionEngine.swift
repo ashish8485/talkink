@@ -21,8 +21,8 @@ public enum SoyleModel: String, CaseIterable, Sendable {
 
     public var menuLabel: String {
         switch self {
-        case .int8: return "8-bit (fast, recommended)"
-        case .bf16: return "bf16 (max accuracy)"
+        case .int8: return "8-bit (fastest)"
+        case .bf16: return "bf16 (best quality — recommended)"
         }
     }
 

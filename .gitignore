@@ -16,3 +16,4 @@ dist/
 
 # Local model cache (downloaded on first run, never committed)
 Models/
+.gstack/
