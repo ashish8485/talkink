@@ -14,8 +14,15 @@ enum SelfTest {
         }
         let url = URL(fileURLWithPath: (audioPath as NSString).expandingTildeInPath)
         let engine = TranscriptionEngine(model: .int8)
-        let sem = DispatchSemaphore(value: 0)
-        var code: Int32 = 0
+        final class LastPct: @unchecked Sendable { var value = -1 }
+        let last = LastPct()
+        engine.onDownloadProgress = { fraction in
+            let pct = Int(fraction * 20) * 5   // 5% steps
+            if pct != last.value {
+                last.value = pct
+                FileHandle.standardError.write(Data("[selftest] downloading model… \(pct)%\n".utf8))
+            }
+        }
         Task {
             do {
                 try await engine.load()
@@ -24,14 +31,16 @@ enum SelfTest {
                     format: "[selftest] OK — audio=%.1fs infer=%.2fs %.0fx RT\n",
                     r.audioSeconds, r.inferSeconds, r.realtimeFactor).utf8))
                 print(r.text)
+                exit(0)
             } catch {
                 FileHandle.standardError.write(Data("[selftest] ERROR: \(error)\n".utf8))
-                code = 1
+                exit(1)
             }
-            sem.signal()
         }
-        sem.wait()
-        exit(code)
+        // Park the main thread as the main-queue executor: the engine's
+        // download-progress handler is @MainActor — a blocked main thread
+        // (semaphore) would deadlock the whole load.
+        dispatchMain()
     }
 
     /// Records ~1.2s from the default microphone and reports the sample count —

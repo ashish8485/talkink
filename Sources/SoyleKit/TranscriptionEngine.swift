@@ -2,6 +2,7 @@ import Foundation
 import MLX
 import MLXAudioSTT
 import MLXAudioCore
+import HuggingFace
 
 /// Which Nemotron 3.5 ASR weights to load. 8-bit is the default (smaller, faster,
 /// quality on par with bf16 on this hardware); bf16 is the max-precision fallback.
@@ -22,6 +23,14 @@ public enum SoyleModel: String, CaseIterable, Sendable {
         switch self {
         case .int8: return "8-bit (fast, recommended)"
         case .bf16: return "bf16 (max accuracy)"
+        }
+    }
+
+    /// Approximate one-time download size, for first-run UI.
+    public var approxSize: String {
+        switch self {
+        case .int8: return "~756 MB"
+        case .bf16: return "~1.2 GB"
         }
     }
 }
@@ -56,6 +65,10 @@ public final class TranscriptionEngine: @unchecked Sendable {
     private let lock = NSLock()
     private let inferLock = NSLock()   // serialize MLX inference (warmUp vs transcribe must not overlap)
 
+    /// Called on the main actor with 0…1 progress while the model downloads
+    /// (first run, ~756 MB). Not called when the cache is already warm.
+    public var onDownloadProgress: (@MainActor @Sendable (Double) -> Void)?
+
     public init(model: SoyleModel = .int8) {
         self.model = model
     }
@@ -69,8 +82,30 @@ public final class TranscriptionEngine: @unchecked Sendable {
     public func load() async throws {
         if isLoaded { return }
         let target = currentTargetModel()
+        try await predownloadReportingProgress(target)
         let loaded = try await NemotronASRModel.fromPretrained(target.repoID)
         install(loaded, ifStillTargeting: target)
+    }
+
+    /// Resolve (download on first run) the weights with byte-level progress —
+    /// `fromPretrained` has no progress hook, so we pre-warm the same cache it
+    /// reads from. No-op cost when already cached.
+    private func predownloadReportingProgress(_ target: SoyleModel) async throws {
+        guard let onDownloadProgress, let repoID = Repo.ID(rawValue: target.repoID) else { return }
+        let token = ProcessInfo.processInfo.environment["HF_TOKEN"]
+        let client: HubClient = (token?.isEmpty == false)
+            ? HubClient(host: HubClient.defaultHost, bearerToken: token, cache: .default)
+            : HubClient(cache: .default)
+        _ = try await ModelUtils.resolveOrDownloadModel(
+            client: client,
+            cache: .default,
+            repoID: repoID,
+            requiredExtension: "safetensors",
+            progressHandler: { progress in
+                let f = progress.fractionCompleted
+                if f < 1.0 { onDownloadProgress(f) }
+            }
+        )
     }
 
     private func currentTargetModel() -> SoyleModel {

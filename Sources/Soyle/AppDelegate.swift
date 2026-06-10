@@ -6,7 +6,7 @@ import SoyleKit
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
     enum AppState: Equatable {
-        case loadingModel
+        case loadingModel(progress: Int?)   // percent while downloading (first run), nil while loading weights
         case ready
         case recording
         case transcribing
@@ -26,7 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var modelLoadFailed = false
     private var pendingStop: DispatchWorkItem?   // release-grace timer (tail capture)
     private var dictationGeneration = 0          // ignore stale transcription completions
-    private var state: AppState = .loadingModel { didSet { updateMenu(); updateStatusIcon() } }
+    private var state: AppState = .loadingModel(progress: nil) { didSet { updateMenu(); updateStatusIcon() } }
 
     // MARK: Lifecycle
 
@@ -37,6 +37,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         recorder.onLevel = { [weak self] lvl in self?.overlay.updateLevel(lvl) }
         ptt.onStart = { [weak self] in self?.startRecording() }
         ptt.onStop = { [weak self] in self?.stopRecording() }
+        engine.onDownloadProgress = { [weak self] fraction in
+            guard let self else { return }
+            let pct = min(99, Int(fraction * 100))
+            // Only meaningful while we're in the loading state (first run).
+            if case .loadingModel(let current) = self.state, current != pct {
+                self.state = .loadingModel(progress: pct)
+            }
+        }
 
         observeSettings()
         requestPermissionsThenStart()
@@ -77,7 +85,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard state == .needsInputMonitoring, Permissions.hasInputMonitoring else { return }
         if ptt.start() {
             armTimer?.invalidate(); armTimer = nil
-            state = engine.isLoaded ? .ready : .loadingModel
+            state = engine.isLoaded ? .ready : .loadingModel(progress: nil)
         }
     }
 
@@ -90,7 +98,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         // Input Monitoring: needed for the global tap.
         if ptt.start() {
-            state = .loadingModel // will flip to .ready once model loads
+            state = .loadingModel(progress: nil) // will flip to .ready once model loads
         } else {
             state = .needsInputMonitoring
             startArmTimer()       // auto-recover once the grant lands (no relaunch needed)
@@ -140,7 +148,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // PTT release in stopRecording's guard and leave the mic running.
         abortRecordingIfNeeded()
         engine.switchModel(to: newModel)
-        state = .loadingModel
+        state = .loadingModel(progress: nil)
         Task { @MainActor in
             do {
                 try await engine.load()
@@ -163,8 +171,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if state == .transcribing { state = .ready }
         }
         guard state == .ready else {
-            if state == .loadingModel {
-                overlay.show(.error("Model is loading…"), autoHideAfter: 1.5)
+            if case .loadingModel(let pct) = state {
+                overlay.show(.error(pct != nil ? "Downloading model…" : "Model is loading…"),
+                             autoHideAfter: 1.5)
             } else if state == .needsInputMonitoring {
                 promptInputMonitoring()
             }
@@ -362,7 +371,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func statusLine() -> String {
         switch state {
-        case .loadingModel: return "⏳ Loading model…"
+        case .loadingModel(let pct):
+            // The downloader only reports per-file completion (verified: the big
+            // weights file lands at once), so a percent is usually stuck at 0 —
+            // show it only if it ever moves.
+            guard let pct else { return "⏳ Loading model…" }
+            return pct > 0 ? "⏳ Downloading model… \(pct)%"
+                           : "⏳ Downloading model (\(settings.model.approxSize), one-time)…"
         case .ready: return "● Ready — hold \(settings.pttKey.displayName)"
         case .recording: return "🎙 Recording…"
         case .transcribing: return "✍️ Transcribing…"
