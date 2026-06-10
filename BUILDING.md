@@ -22,7 +22,9 @@ This:
 2. assembles `dist/Söyle.app`,
 3. copies `mlx-swift_Cmlx.bundle` (which contains `default.metallib`) into
    `Contents/Resources/` — **required**, or the app can't run MLX,
-4. code-signs the bundle (uses the `Soyle Dev` identity if present, else ad-hoc).
+4. embeds `Sparkle.framework` (auto-updates) and re-signs its components,
+5. code-signs the bundle with hardened runtime + `packaging/Soyle.entitlements`
+   (identity order: `Developer ID Application` → local `Soyle Dev` → ad-hoc).
 
 Output: `dist/Söyle.app`. First launch downloads the model (~756 MB, 8-bit) from
 Hugging Face into `~/.cache/huggingface`.
@@ -33,6 +35,13 @@ Verifies the bundled Metal library + model + transcription:
 
 ```bash
 "dist/Söyle.app/Contents/MacOS/Soyle" --selftest path/to/audio.wav
+```
+
+And the microphone capture pipeline (incl. the hardened-runtime audio-input
+entitlement; records ~1.2 s and reports sample count + RMS):
+
+```bash
+"dist/Söyle.app/Contents/MacOS/Soyle" --mictest
 ```
 
 ## CLI / benchmarking
@@ -89,3 +98,33 @@ GitHub Release with the `Soyle.zip` asset. The in-app updater points at the late
 - Permissions used: **Microphone** + **Input Monitoring** (global push-to-talk tap) +
   **Accessibility** (optional — auto-paste at the cursor). Without Accessibility, Söyle
   falls back to clipboard-only.
+
+## Release: Developer ID + notarization + Sparkle
+
+One-time setup (after enrolling in the Apple Developer Program):
+
+1. Xcode → Settings → Accounts → your Apple ID → *Manage Certificates…* → "+"
+   → **Developer ID Application**. `build_app.sh` prefers it automatically over
+   the local "Soyle Dev" identity.
+2. Notarization credentials (app-specific password from account.apple.com):
+   ```bash
+   xcrun notarytool store-credentials soyle-notary \
+     --apple-id YOU@EXAMPLE.COM --team-id TEAMID --password app-specific-pw
+   ```
+3. Sparkle update-signing keys (private key stays in your login keychain):
+   ```bash
+   BIN=$(ls -d DerivedData/SourcePackages/artifacts/sparkle*/Sparkle/bin | head -1)
+   "$BIN/generate_keys"   # paste the printed public key into packaging/Info.plist (SUPublicEDKey)
+   ```
+
+Per release:
+
+```bash
+scripts/build_app.sh Release        # Developer ID + hardened runtime + entitlements
+scripts/notarize.sh                 # upload → wait → staple → dist/Soyle.zip
+gh release create vX.Y.Z dist/Soyle.zip --title "Söyle vX.Y.Z" --notes "…"
+scripts/make_appcast.sh vX.Y.Z dist/Soyle.zip
+git add appcast.xml && git commit -m "release: appcast for vX.Y.Z" && git push
+```
+
+Sparkle-equipped installs (≥ v0.3.0) then update in-app automatically.

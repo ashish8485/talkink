@@ -1,5 +1,13 @@
 name: Release
 
+# ⚠️ DO NOT USE for public releases since v0.3.0: this workflow signs AD-HOC,
+# which changes the app's TCC identity (users would lose/re-grant permissions)
+# and cannot be notarized. Official releases are built locally:
+#   scripts/build_app.sh Release && scripts/notarize.sh && gh release create …
+#   && scripts/make_appcast.sh   (see BUILDING.md → "Release")
+# To use CI for releases, first import the Developer ID cert + notary keychain
+# profile as repo secrets and port those steps here.
+#
 # Manual for now (run from the Actions tab with a tag like "v0.2.0"). Once a GitHub
 # runner with Xcode 26 / Swift 6.2 is confirmed working, switch to the tag trigger:
 #   on: { push: { tags: ['v*'] } }
