@@ -32,7 +32,7 @@ struct SettingsView: View {
             }
             .frame(width: 50, height: 50)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Söyle").font(.system(size: 22, weight: .bold))
+                Text("Talkink").font(.system(size: 22, weight: .bold))
                 Text("Hold \(settings.pttKey.displayName), speak, release.")
                     .font(.system(size: 12)).foregroundStyle(.secondary)
             }
@@ -52,11 +52,11 @@ struct SettingsView: View {
                 else { Permissions.requestMicrophone { _ in perms.refresh() } }
             }
             permRow(title: "Input Monitoring", granted: perms.inputMonitoring,
-                    hint: "To detect your key. In the list that opens: click “+”, choose Söyle in Applications, then switch it on.",
+                    hint: "To detect your key. In the list that opens: click “+”, choose Talkink in Applications, then switch it on.",
                     button: perms.inputMonitoring ? nil : "Allow") {
                 // On macOS 26, answering the system prompt no longer adds the
                 // app to the Input Monitoring list (verified with clean TCC
-                // identities) — so we open the pane AND reveal Söyle.app in the
+                // identities) — so we open the pane AND reveal Talkink.app in the
                 // Finder for a direct drag into the list. The request still
                 // fires for macOS versions where it registers properly.
                 Permissions.requestInputMonitoring()
@@ -66,7 +66,7 @@ struct SettingsView: View {
                 }
             }
             permRow(title: "Accessibility", granted: perms.accessibility,
-                    hint: "To paste automatically at the cursor. Without it, the text stays in the clipboard (⌘V). Not in the list? Add Söyle with “+”.",
+                    hint: "To paste automatically at the cursor. Without it, the text stays in the clipboard (⌘V). Not in the list? Add Talkink with “+”.",
                     button: perms.accessibility ? nil : "Allow") {
                 // The AX prompt has its own "Open System Settings" button;
                 // ours is only the fallback.

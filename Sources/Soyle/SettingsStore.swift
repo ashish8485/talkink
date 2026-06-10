@@ -112,7 +112,7 @@ final class SettingsStore: ObservableObject {
                 if SMAppService.mainApp.status == .enabled { try SMAppService.mainApp.unregister() }
             }
         } catch {
-            NSLog("Söyle: login item update failed: \(error.localizedDescription)")
+            NSLog("Talkink: login item update failed: \(error.localizedDescription)")
         }
     }
 }

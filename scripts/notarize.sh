@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Notarize + staple dist/Söyle.app and produce the distributable Soyle.zip.
+# Notarize + staple dist/Talkink.app and produce the distributable Talkink.zip.
 #
 # One-time setup (after enrolling in the Apple Developer Program):
 #   1. Xcode → Settings → Accounts → your Apple ID → Manage Certificates…
@@ -14,9 +14,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-APP="dist/Söyle.app"
+APP="dist/Talkink.app"
 PROFILE="${SOYLE_NOTARY_PROFILE:-soyle-notary}"
-OUT_ZIP="${1:-dist/Soyle.zip}"
+OUT_ZIP="${1:-dist/Talkink.zip}"
 
 [ -d "${APP}" ] || { echo "xx ${APP} not found — run scripts/build_app.sh Release first"; exit 1; }
 
@@ -46,14 +46,14 @@ echo "==> packaging the stapled app"
 ditto -c -k --keepParent "${APP}" "${OUT_ZIP}"
 
 echo "==> building + notarizing the drag-to-Applications DMG"
-scripts/make_dmg.sh dist/Soyle.dmg
+scripts/make_dmg.sh dist/Talkink.dmg
 DEV_ID="$(security find-identity -v -p codesigning | grep -m1 "Developer ID Application" | sed 's/^[^"]*"//; s/"$//')"
-codesign --force --timestamp --sign "${DEV_ID}" dist/Soyle.dmg
-xcrun notarytool submit dist/Soyle.dmg --keychain-profile "${PROFILE}" --wait \
+codesign --force --timestamp --sign "${DEV_ID}" dist/Talkink.dmg
+xcrun notarytool submit dist/Talkink.dmg --keychain-profile "${PROFILE}" --wait \
   || { echo "xx DMG notarization failed"; exit 1; }
-xcrun stapler staple dist/Soyle.dmg
-spctl --assess --type open --context context:primary-signature -vv dist/Soyle.dmg
+xcrun stapler staple dist/Talkink.dmg
+spctl --assess --type open --context context:primary-signature -vv dist/Talkink.dmg
 
 echo "OK notarized + stapled:"
-echo "   dist/Soyle.dmg  → human downloads (GitHub release)"
+echo "   dist/Talkink.dmg  → human downloads (GitHub release)"
 echo "   ${OUT_ZIP}  → Sparkle update feed (GitHub release + make_appcast.sh)"

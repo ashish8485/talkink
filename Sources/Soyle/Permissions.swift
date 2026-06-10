@@ -4,7 +4,7 @@ import AVFoundation
 import CoreGraphics
 import ApplicationServices
 
-/// Permissions used by Söyle:
+/// Permissions used by Talkink:
 ///  • Microphone — to record (required).
 ///  • Input Monitoring — listen-only global CGEventTap for push-to-talk (required).
 ///  • Accessibility — auto-paste at the cursor (optional; clipboard-only without it).
@@ -39,7 +39,7 @@ enum Permissions {
         }
     }
 
-    /// Reveal Söyle.app in a Finder window, so the user can drag it straight
+    /// Reveal Talkink.app in a Finder window, so the user can drag it straight
     /// into the Input Monitoring list (on macOS 26 answering the system prompt
     /// no longer registers the app there — verified — manual add is the path).
     static func revealAppInFinder() {

@@ -7,8 +7,8 @@ export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8   # so multibyte chars tokenize clean
 cd "$(dirname "$0")/.."
 ROOT="$(pwd)"
 
-APP_NAME="Söyle"
-EXEC="Soyle"
+APP_NAME="Talkink"
+EXEC="Soyle"   # internal executable name (bundle id continuity) — display name is Talkink
 CONFIG="${1:-Release}"
 DD="${ROOT}/DerivedData"
 PROD="${DD}/Build/Products/${CONFIG}"

@@ -13,7 +13,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         )
         super.init(window: window)
 
-        window.title = "Söyle"
+        window.title = "Talkink"
         window.isReleasedWhenClosed = false
         window.delegate = self
         window.contentViewController = NSHostingController(

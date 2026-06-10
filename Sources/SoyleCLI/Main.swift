@@ -4,7 +4,7 @@ import MLXAudioSTT
 import MLXAudioCore
 import SoyleKit
 
-// Söyle CLI — headless transcription + benchmarking harness for the Nemotron engine.
+// Talkink CLI — headless transcription + benchmarking harness for the Nemotron engine.
 // usage: soyle-cli [--model REPO | --bf16] [--lang fr-FR] [--stream] AUDIO [AUDIO…]
 @main
 struct SoyleCLI {

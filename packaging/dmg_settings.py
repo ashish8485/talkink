@@ -1,10 +1,10 @@
 # dmgbuild settings — drag-to-install layout matching packaging/dmg-background.html
 # Usage (via scripts/make_dmg.sh):
-#   python3 -m dmgbuild -s packaging/dmg_settings.py -D app="dist/Söyle.app" "Söyle" dist/Soyle.dmg
+#   python3 -m dmgbuild -s packaging/dmg_settings.py -D app="dist/Talkink.app" "Talkink" dist/Talkink.dmg
 import os.path
 import unicodedata
 
-app = defines.get("app", "dist/Söyle.app")  # noqa: F821
+app = defines.get("app", "dist/Talkink.app")  # noqa: F821
 appname = os.path.basename(app)
 # HFS+/APFS store names in NFD; Finder looks Iloc entries up by the on-disk
 # form. Register both normalizations so the diacritic never breaks the layout.

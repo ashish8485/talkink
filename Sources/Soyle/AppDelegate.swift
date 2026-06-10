@@ -295,7 +295,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .needsInputMonitoring: symbol = "exclamationmark.triangle.fill"
         default: symbol = "mic"
         }
-        button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: "Söyle")
+        button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: "Talkink")
         button.image?.isTemplate = (state != .recording)
         button.contentTintColor = (state == .recording) ? .nvidia : nil
     }
@@ -354,11 +354,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(sounds)
 
         menu.addItem(.separator())
-        menu.addItem(item("Open Söyle (history, settings)…", #selector(openSettings), key: ","))
+        menu.addItem(item("Open Talkink (history, settings)…", #selector(openSettings), key: ","))
         menu.addItem(item("Check for Updates…", #selector(checkForUpdates)))
-        menu.addItem(item("About Söyle", #selector(about)))
+        menu.addItem(item("About Talkink", #selector(about)))
         menu.addItem(.separator())
-        menu.addItem(item("Quit Söyle", #selector(quit), key: "q"))
+        menu.addItem(item("Quit Talkink", #selector(quit), key: "q"))
 
         statusItem.menu = menu
     }
@@ -420,7 +420,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func about() {
         let alert = NSAlert()
-        alert.messageText = "Söyle"
+        alert.messageText = "Talkink"
         alert.informativeText = "On-device voice dictation (NVIDIA Nemotron 3.5 ASR via MLX).\nHold \(settings.pttKey.displayName), speak, release — the text is pasted at your cursor and copied."
         alert.addButton(withTitle: "OK")
         NSApp.activate(ignoringOtherApps: true)

@@ -1,6 +1,6 @@
-# Contributing to Söyle
+# Contributing to Talkink
 
-Thanks for your interest! Söyle is a small, focused macOS app — contributions and
+Thanks for your interest! Talkink is a small, focused macOS app — contributions and
 issues are welcome.
 
 ## Build
@@ -17,7 +17,7 @@ See [BUILDING.md](BUILDING.md). The key points:
 - Build the app and run the headless self-test on a sample clip:
   ```bash
   scripts/build_app.sh Release
-  "dist/Söyle.app/Contents/MacOS/Soyle" --selftest path/to/16k-mono.wav
+  "dist/Talkink.app/Contents/MacOS/Soyle" --selftest path/to/16k-mono.wav
   ```
 - If you touch the engine, also smoke-test the CLI (`soyle-cli`).
 - Run the app and exercise push-to-talk → transcribe → paste, plus the History tab.

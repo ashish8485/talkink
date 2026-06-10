@@ -2,7 +2,7 @@
 
 ## Privacy posture
 
-Söyle is designed to keep your data on your machine:
+Talkink is designed to keep your data on your machine:
 
 - **Speech & transcripts never leave your Mac.** Transcription runs locally on Apple
   Silicon via MLX. Audio is processed in memory; transcripts are stored only in a local
@@ -18,7 +18,7 @@ Söyle is designed to keep your data on your machine:
 - **Microphone** — to record while the push-to-talk key is held.
 - **Input Monitoring** — to detect the push-to-talk key globally (listen-only event tap).
 - **Accessibility** — optional; only used to paste at the cursor (synthetic ⌘V). Without
-  it, Söyle falls back to copying to the clipboard.
+  it, Talkink falls back to copying to the clipboard.
 
 ## Reporting a vulnerability
 

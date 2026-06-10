@@ -7,14 +7,14 @@
 #                            # packaging/Info.plist (SUPublicEDKey).
 #                            # The private key stays in your login keychain.
 #
-# Per release (AFTER the GitHub release with Soyle.zip exists):
-#   scripts/make_appcast.sh v0.3.0 dist/Soyle.zip
+# Per release (AFTER the GitHub release with Talkink.zip exists):
+#   scripts/make_appcast.sh v0.3.0 dist/Talkink.zip
 #   git add appcast.xml && git commit -m "release: appcast for v0.3.0" && git push
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-TAG="${1:?usage: make_appcast.sh vX.Y.Z path/to/Soyle.zip}"
-ZIP="${2:?usage: make_appcast.sh vX.Y.Z path/to/Soyle.zip}"
+TAG="${1:?usage: make_appcast.sh vX.Y.Z path/to/Talkink.zip}"
+ZIP="${2:?usage: make_appcast.sh vX.Y.Z path/to/Talkink.zip}"
 VER="${TAG#v}"
 BIN=$(ls -d DerivedData/SourcePackages/artifacts/sparkle*/Sparkle/bin 2>/dev/null | head -1)
 [ -n "${BIN}" ] || { echo "xx Sparkle tools not found — run scripts/build_app.sh once first"; exit 1; }
@@ -29,20 +29,24 @@ cat > appcast.xml <<APPCAST
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
   <channel>
-    <title>Söyle</title>
+    <title>Talkink</title>
     <item>
-      <title>Söyle ${VER}</title>
+      <title>Talkink ${VER}</title>
       <pubDate>${PUBDATE}</pubDate>
       <sparkle:version>${BUILD_NUM}</sparkle:version>
       <sparkle:shortVersionString>${VER}</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-      <sparkle:releaseNotesLink>https://github.com/hasso5703/soyle/releases/tag/${TAG}</sparkle:releaseNotesLink>
+      <sparkle:releaseNotesLink>https://github.com/hasso5703/talkink/releases/tag/${TAG}</sparkle:releaseNotesLink>
       <enclosure
-        url="https://github.com/hasso5703/soyle/releases/download/${TAG}/Soyle.zip"
+        url="https://github.com/hasso5703/talkink/releases/download/${TAG}/Talkink.zip"
         ${SIG_ATTRS}
         type="application/octet-stream"/>
     </item>
   </channel>
 </rss>
 APPCAST
-echo "OK appcast.xml written for ${TAG} — commit & push AFTER the GitHub release exists."
+# Two consumers: talkink.app/appcast.xml (canonical, served by Vercel — also our
+# daily-active-users counter) and the repo-root copy (legacy ≤0.3.3 installs
+# read it via raw.githubusercontent, which follows the repo rename).
+cp appcast.xml site/appcast.xml
+echo "OK appcast.xml written for ${TAG} (repo root + site/) — commit, push, and redeploy the site."

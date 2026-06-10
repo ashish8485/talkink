@@ -1,6 +1,6 @@
-# Building Söyle
+# Building Talkink
 
-Söyle is a SwiftPM package; the GUI app is assembled into `Söyle.app` by a script.
+Talkink is a SwiftPM package; the GUI app is assembled into `Talkink.app` by a script.
 **You must build with `xcodebuild` (not `swift build`)** — MLX's Metal shader library
 (`default.metallib`) is only compiled by Xcode's build system. A bare `swift build`
 produces a binary that fails at runtime with *"Failed to load the default metallib."*
@@ -19,29 +19,29 @@ scripts/build_app.sh Release      # or: Debug
 
 This:
 1. runs `xcodebuild -scheme Soyle` (compiles Swift + MLX C++ + Metal shaders),
-2. assembles `dist/Söyle.app`,
+2. assembles `dist/Talkink.app`,
 3. copies `mlx-swift_Cmlx.bundle` (which contains `default.metallib`) into
    `Contents/Resources/` — **required**, or the app can't run MLX,
 4. embeds `Sparkle.framework` (auto-updates) and re-signs its components,
 5. code-signs the bundle with hardened runtime + `packaging/Soyle.entitlements`
    (identity order: `Developer ID Application` → local `Soyle Dev` → ad-hoc).
 
-Output: `dist/Söyle.app`. First launch downloads the model (~756 MB, 8-bit) from
-Hugging Face into `~/.cache/huggingface`.
+Output: `dist/Talkink.app`. First dictation downloads the model (~1.2 GB bf16 by
+default) from Hugging Face into `~/.cache/huggingface`.
 
 ## Headless self-test (no GUI / mic / permissions)
 
 Verifies the bundled Metal library + model + transcription:
 
 ```bash
-"dist/Söyle.app/Contents/MacOS/Soyle" --selftest path/to/audio.wav
+"dist/Talkink.app/Contents/MacOS/Soyle" --selftest path/to/audio.wav
 ```
 
 And the microphone capture pipeline (incl. the hardened-runtime audio-input
 entitlement; records ~1.2 s and reports sample count + RMS):
 
 ```bash
-"dist/Söyle.app/Contents/MacOS/Soyle" --mictest
+"dist/Talkink.app/Contents/MacOS/Soyle" --mictest
 ```
 
 ## CLI / benchmarking
@@ -71,32 +71,12 @@ scripts/dev_sign_setup.sh    # asks for your Mac password to trust the local cer
 After that, `build_app.sh` auto-signs with `Soyle Dev` and grants persist across rebuilds.
 This identity is local-only; it does **not** make the app distributable to other Macs.
 
-## Cutting a release (Path B — unsigned/unnotarized)
-
-Releases are produced by CI (`.github/workflows/release.yml`) on a tag push:
-
-```bash
-# bump the version in packaging/Info.plist (CFBundleShortVersionString), commit, then:
-git tag v0.1.0
-git push origin main --tags
-```
-
-CI builds on `macos-15` with Xcode 16, runs the self-test, zips the app with `ditto`
-(preserves the code signature and symlinks — plain `zip` corrupts them), and creates a
-GitHub Release with the `Soyle.zip` asset. The in-app updater points at the latest release.
-
-> **Distribution reality:** Söyle is **not notarized**. A downloaded build is quarantined
-> by Gatekeeper on macOS Sequoia; users clear it with
-> `xattr -dr com.apple.quarantine /Applications/Söyle.app` (documented in the README).
-> Notarization (Apple Developer ID, $99/yr) would remove that friction and unlock Sparkle
-> auto-update — tracked on the roadmap.
-
 ## Notes
 
 - The `mlx-audio-swift` dependency is pinned to a specific commit in `Package.swift`
   (it tracks `main` with no release tag). Bump it deliberately.
 - Permissions used: **Microphone** + **Input Monitoring** (global push-to-talk tap) +
-  **Accessibility** (optional — auto-paste at the cursor). Without Accessibility, Söyle
+  **Accessibility** (optional — auto-paste at the cursor). Without Accessibility, Talkink
   falls back to clipboard-only.
 
 ## Release: Developer ID + notarization + Sparkle
@@ -121,9 +101,9 @@ Per release:
 
 ```bash
 scripts/build_app.sh Release        # Developer ID + hardened runtime + entitlements
-scripts/notarize.sh                 # upload → wait → staple → dist/Soyle.zip
-gh release create vX.Y.Z dist/Soyle.zip --title "Söyle vX.Y.Z" --notes "…"
-scripts/make_appcast.sh vX.Y.Z dist/Soyle.zip
+scripts/notarize.sh                 # upload → wait → staple → dist/Talkink.zip
+gh release create vX.Y.Z dist/Talkink.zip --title "Talkink vX.Y.Z" --notes "…"
+scripts/make_appcast.sh vX.Y.Z dist/Talkink.zip
 git add appcast.xml && git commit -m "release: appcast for vX.Y.Z" && git push
 ```
 

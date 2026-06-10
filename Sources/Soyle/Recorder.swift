@@ -91,7 +91,7 @@ final class Recorder {
             try installTap()
             if !engine.isRunning { engine.prepare(); try engine.start() }
         } catch {
-            NSLog("Söyle: audio reconfig recovery failed: \(error.localizedDescription)")
+            NSLog("Talkink: audio reconfig recovery failed: \(error.localizedDescription)")
         }
     }
 

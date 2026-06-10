@@ -2,36 +2,34 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleName</key>
-	<string>Söyle</string>
 	<key>CFBundleDisplayName</key>
-	<string>Söyle</string>
-	<key>CFBundleIdentifier</key>
-	<string>io.github.hasso5703.soyle</string>
+	<string>Talkink</string>
 	<key>CFBundleExecutable</key>
 	<string>Soyle</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>io.github.hasso5703.soyle</string>
+	<key>CFBundleName</key>
+	<string>Talkink</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.3.3</string>
+	<string>0.4.0</string>
 	<key>CFBundleVersion</key>
-	<string>6</string>
+	<string>7</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.productivity</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
 	<key>LSUIElement</key>
 	<true/>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Söyle transcribes your voice locally (on your machine) to copy the text into the clipboard. No audio is sent over the Internet.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 Hasan — MIT License</string>
-	<key>LSApplicationCategoryType</key>
-	<string>public.app-category.productivity</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Talkink transcribes your voice locally (on your machine) to type it for you. No audio is sent over the Internet.</string>
 	<key>SUFeedURL</key>
-	<string>https://raw.githubusercontent.com/hasso5703/soyle/main/appcast.xml</string>
-	<!-- Sparkle EdDSA public key (updates are signed with the private key in
-	     Hasan's login keychain — generated 2026-06-10 by generate_keys). -->
+	<string>https://talkink.app/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>CUkR77bQFfz8Y4lkYMtOfCS4wFGbNywJuO3d+12QX2Y=</string>
 </dict>

@@ -3,7 +3,7 @@ import ApplicationServices
 
 /// Locates the window the user is working in, so the overlay can appear attached
 /// to it instead of at a fixed screen position. Tries the focused window via
-/// Accessibility first (precise; Söyle usually has it for auto-paste), then the
+/// Accessibility first (precise; Talkink usually has it for auto-paste), then the
 /// frontmost app's topmost standard window via the window list (no permission
 /// needed — window bounds don't require Screen Recording, only names do).
 /// Returns AppKit (bottom-left-origin) screen coordinates.

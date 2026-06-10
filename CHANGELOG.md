@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.4.0 — Söyle becomes **Talkink**
+
+Talk. Ink. New name, new home — same app, same privacy.
+
+### Changed
+- **Renamed to Talkink** (talk → ink: you speak, it writes). Website:
+  **[talkink.app](https://talkink.app)**. Your settings, history and
+  permissions carry over (the internal identifiers are unchanged).
+- Update feed now served from talkink.app (legacy feed kept for old installs).
+- Release assets are now `Talkink.dmg` / `Talkink.zip`.
+
+### For existing users
+- The app file becomes `Talkink.app` after the update. If push-to-talk stops
+  responding, remove the old *Söyle* entries in System Settings → Privacy &
+  Security (*Input Monitoring*, *Accessibility*) and add **Talkink** — one time.
+
 ## v0.3.3
 
 First-real-user release — every change below comes from watching a

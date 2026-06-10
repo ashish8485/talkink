@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="assets/hero.png" alt="Söyle — Say it. It's written." width="880"/>
+<img src="assets/hero.png" alt="Talkink — Say it. It's written." width="880"/>
 
-# Söyle
+# Talkink
 
 Push-to-talk dictation for macOS, **100% on-device**. Hold a key, speak, release —
 your text is transcribed locally and pasted right at your cursor. Powered by
@@ -12,7 +12,7 @@ your text is transcribed locally and pasted right at your cursor. Powered by
 ![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-required-black)
 ![License](https://img.shields.io/badge/license-MIT-76B900)
 
-### 🌐 **[soyle-ten.vercel.app](https://soyle-ten.vercel.app)** — website & one-click download
+### 🌐 **[talkink.app](https://talkink.app)** — website & one-click download
 
 <br/>
 
@@ -22,7 +22,7 @@ your text is transcribed locally and pasted right at your cursor. Powered by
 
 ---
 
-## Why Söyle
+## Why Talkink
 
 - 🔒 **Local & private** — your voice and text never leave your Mac. No cloud, no subscription.
 - ⚡ **Fast** — ~30–40× faster than real time on a MacBook Air M4 (8-bit model).
@@ -33,7 +33,7 @@ your text is transcribed locally and pasted right at your cursor. Powered by
 
 ## How it works
 
-1. Söyle lives in the menu bar (no Dock icon).
+1. Talkink lives in the menu bar (no Dock icon).
 2. **Hold** the push-to-talk key (Right Option ⌥ by default) → recording starts.
 3. **Speak.**
 4. **Release** → local transcription in a fraction of a second → text is **pasted at your cursor** (if Accessibility is granted) and **copied to the clipboard**.
@@ -58,31 +58,31 @@ A floating pill (NVIDIA green) shows the state: recording → transcribing → d
 
 ### 1. Download & install
 
-1. Download **`Soyle.dmg`** from the [**latest release**](https://github.com/hasso5703/soyle/releases/latest).
-2. Open it and drag **Söyle** onto the **Applications** folder, then eject the disk image.
-3. Launch Söyle from Applications. No security warning — Söyle is **signed and
+1. Download **`Talkink.dmg`** from the [**latest release**](https://github.com/hasso5703/talkink/releases/latest).
+2. Open it and drag **Talkink** onto the **Applications** folder, then eject the disk image.
+3. Launch Talkink from Applications. No security warning — Talkink is **signed and
    notarized by Apple** (since v0.3.0).
 
 > <a name="is-it-safe"></a>**Is it safe?** Yes, twice over: the download is notarized by Apple
-> (scanned and ticketed), *and* Söyle is fully open source — you can read every line in this
+> (scanned and ticketed), *and* Talkink is fully open source — you can read every line in this
 > repo and [build it yourself](BUILDING.md).
 
-> **Updating from v0.1.0 / v0.2.0?** Those early builds were signed differently. After replacing
-> the app, remove Söyle from System Settings → Privacy & Security → *Input Monitoring* and
-> *Accessibility* (− button), then re-add it and re-enable both — one time. From v0.3.0 on,
-> updates install themselves in-app and permissions stick.
+> **Coming from Söyle (Talkink's former name, ≤ v0.3.3)?** Your settings and history carry
+> over automatically. If push-to-talk stops responding, remove the old **Söyle** entries from
+> System Settings → Privacy & Security → *Input Monitoring* and *Accessibility* (− button),
+> then add **Talkink** and enable it — one time.
 
 ### 2. Grant permissions (the onboarding window guides you)
 
 | Permission | Why | Note |
 |---|---|---|
 | **Microphone** | To hear you | — |
-| **Input Monitoring** | Detect the push-to-talk key everywhere | On macOS 26 you may need to add Söyle yourself: “+” or drag Söyle.app into the list (Söyle opens the pane and a Finder window for you) |
-| **Accessibility** *(optional)* | Paste at the cursor | Skip it and Söyle just copies to the clipboard (paste with ⌘V) |
+| **Input Monitoring** | Detect the push-to-talk key everywhere | On macOS 26 you may need to add Talkink yourself: “+” or drag Talkink.app into the list (Talkink opens the pane and a Finder window for you) |
+| **Accessibility** *(optional)* | Paste at the cursor | Skip it and Talkink just copies to the clipboard (paste with ⌘V) |
 
 ### 3. Use it
 
-On the **first** transcription, Söyle downloads the model (~1.2 GB) once — you'll see
+On the **first** transcription, Talkink downloads the model (~1.2 GB) once — you'll see
 *"Loading model…"*. After that: **hold Right Option ⌥, speak, release** → your text appears at
 the cursor and on the clipboard. That's it. 🎤
 
@@ -91,10 +91,10 @@ the cursor and on the clipboard. That's it. 🎤
 ### Build from source (developers)
 
 ```bash
-git clone https://github.com/hasso5703/soyle.git
-cd soyle
+git clone https://github.com/hasso5703/talkink.git
+cd talkink
 scripts/build_app.sh Release
-open dist/Söyle.app
+open dist/Talkink.app
 ```
 
 Requires **full Xcode 16+** (the Metal compiler is needed — see [BUILDING.md](BUILDING.md)).
@@ -102,7 +102,7 @@ A locally built app is signed with your own (or an ad-hoc) identity and runs dir
 
 ## Settings
 
-Menu bar → **Open Söyle** → *Settings* tab:
+Menu bar → **Open Talkink** → *Settings* tab:
 
 - **Push-to-talk key** — Right Option (default), Left Option, Right Control, or Fn / 🌐.
 - **Language** — Auto (detect) or a fixed locale.
@@ -111,16 +111,16 @@ Menu bar → **Open Söyle** → *Settings* tab:
 
 ## Network activity
 
-Söyle's transcription is 100% on-device. The only network calls are:
+Talkink's transcription is 100% on-device. The only network calls are:
 
 1. **First-run model download** (~1.2 GB bf16, or ~756 MB if you pick 8-bit) from Hugging Face into `~/.cache/huggingface`.
 2. **Update check** (optional, toggle in Settings) — a request to the GitHub Releases API at launch. No usage telemetry is sent.
 
 ## Troubleshooting
 
-- **Push-to-talk does nothing** → grant **Input Monitoring** (System Settings → Privacy & Security → Input Monitoring). Söyle re-arms itself within a few seconds; relaunch it if the key still does nothing.
-- **Söyle doesn't appear in the Input Monitoring list** → a macOS 26 issue that hits many apps (Karabiner-Elements included): answering the permission prompt doesn't register the app. Click **“+”** in the list (or drag `Söyle.app` into it), then enable the toggle.
-- **After updating from v0.1.0/v0.2.0, the key/auto-paste stopped working** (toggles look on but do nothing) → macOS ties permissions to the app's code signature, and those early builds were signed differently. In System Settings → Privacy & Security, **remove** Söyle from *Input Monitoring* and *Accessibility* (− button), then re-add the new app and re-enable both. One time — the identity is stable from v0.3.0 on.
+- **Push-to-talk does nothing** → grant **Input Monitoring** (System Settings → Privacy & Security → Input Monitoring). Talkink re-arms itself within a few seconds; relaunch it if the key still does nothing.
+- **Talkink doesn't appear in the Input Monitoring list** → a macOS 26 issue that hits many apps (Karabiner-Elements included): answering the permission prompt doesn't register the app. Click **“+”** in the list (or drag `Talkink.app` into it), then enable the toggle.
+- **After updating from an old version (Söyle ≤ v0.2.0), the key/auto-paste stopped working** (toggles look on but do nothing) → macOS ties permissions to the app's code signature, and early builds were signed differently. In System Settings → Privacy & Security, **remove** the old *Söyle* entries from *Input Monitoring* and *Accessibility* (− button), then add **Talkink** and enable it. One time — the identity has been stable since v0.3.0.
 - **It stopped working after rebuilding from source** → ad-hoc signatures change each build; run `scripts/dev_sign_setup.sh` once to create a stable local signing identity so grants persist.
 - **Using Fn / 🌐 as the key** → set System Settings → Keyboard → "Press 🌐 to" = **Do Nothing**.
 - **Model download stalls** → check your connection and `~/.cache/huggingface`.
@@ -134,7 +134,7 @@ Söyle's transcription is 100% on-device. The only network calls are:
 | [mlx-community](https://huggingface.co/mlx-community) | MLX-converted weights (8-bit / bf16) | per model license |
 | [MLX](https://github.com/ml-explore/mlx-swift) | Compute on Apple Silicon (Apple) | MIT |
 
-**The downloaded model is governed by NVIDIA's model license, not MIT.** By using Söyle you agree to it.
+**The downloaded model is governed by NVIDIA's model license, not MIT.** By using Talkink you agree to it.
 
 ## Roadmap
 
@@ -146,4 +146,4 @@ Söyle's transcription is 100% on-device. The only network calls are:
 
 ## License
 
-Söyle's code is [MIT](LICENSE). See the table above for component and model licenses.
+Talkink's code is [MIT](LICENSE). See the table above for component and model licenses.

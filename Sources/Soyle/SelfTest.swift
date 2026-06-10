@@ -5,7 +5,7 @@ import SoyleKit
 /// Headless verification used by scripts/CI: loads the model and transcribes a
 /// file inside the assembled .app, so we can confirm the bundled Metal library
 /// and weights work WITHOUT needing the GUI, microphone or Input Monitoring.
-/// Usage: Söyle.app/Contents/MacOS/Soyle --selftest AUDIO.wav
+/// Usage: Talkink.app/Contents/MacOS/Soyle --selftest AUDIO.wav
 enum SelfTest {
     static func run(audioPath: String) -> Never {
         guard !audioPath.isEmpty else {
@@ -45,7 +45,7 @@ enum SelfTest {
 
     /// Records ~1.2s from the default microphone and reports the sample count —
     /// proves capture works (incl. the audio-input entitlement on hardened
-    /// runtime builds). Usage: Söyle.app/Contents/MacOS/Soyle --mictest
+    /// runtime builds). Usage: Talkink.app/Contents/MacOS/Soyle --mictest
     static func runMicTest() -> Never {
         let status = AVCaptureDevice.authorizationStatus(for: .audio)
         FileHandle.standardError.write(Data("[mictest] mic TCC status=\(status.rawValue) (3=authorized)\n".utf8))

@@ -75,13 +75,13 @@ final class Updater: NSObject, SPUUpdaterDelegate {
     }
 
     func updater(_ updater: SPUUpdater, didAbortWithError error: Error) {
-        NSLog("Söyle updater aborted: %@ (code %ld)",
+        NSLog("Talkink updater aborted: %@ (code %ld)",
               error.localizedDescription, (error as NSError).code)
     }
 
     func updater(_ updater: SPUUpdater, didFinishUpdateCycleFor updateCheck: SPUUpdateCheck, error: Error?) {
         if let error {
-            NSLog("Söyle update cycle ended with error: %@", String(describing: error))
+            NSLog("Talkink update cycle ended with error: %@", String(describing: error))
         }
     }
 }

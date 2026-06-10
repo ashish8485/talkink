@@ -44,7 +44,7 @@ struct LanguageOnboardingView: View {
             Text("👋").font(.system(size: 40))
             Text("Which language will you speak?")
                 .font(.system(size: 21, weight: .bold))
-            Text("Söyle transcribes best when it knows your language.\nYou can change it anytime in Settings.")
+            Text("Talkink transcribes best when it knows your language.\nYou can change it anytime in Settings.")
                 .font(.system(size: 12.5))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
