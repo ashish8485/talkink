@@ -149,6 +149,39 @@ final class TapMachineTests: XCTestCase {
         XCTAssertEqual(m.press(at: 0.4), .start)
         XCTAssertFalse(m.locked, "post-reset press must not see pre-reset taps")
     }
+
+    func testForceLockActsLikeADoubleTap() {
+        var m = PushToTalk.TapMachine()
+        m.forceLock()                                  // talkink://record
+        XCTAssertTrue(m.locked)
+        XCTAssertEqual(m.press(at: 5.0), .stop)        // single tap ends it
+        XCTAssertEqual(m.release(at: 5.1), .none)      // its release is swallowed
+        XCTAssertEqual(m.press(at: 9.0), .start)       // normal PTT afterwards
+    }
+}
+
+// MARK: - History stats
+
+final class HistoryStatsTests: XCTestCase {
+    func testWordsAndWPM() {
+        let items = [
+            HistoryItem(text: "one two three four five six", language: nil, audioSeconds: 20),
+            HistoryItem(text: "seven eight nine ten", language: nil, audioSeconds: 20),
+            HistoryItem(text: "untimed legacy entry", language: nil),   // old history: no duration
+        ]
+        let stats = HistoryStore.stats(of: items)
+        XCTAssertEqual(stats.words, 13)
+        XCTAssertEqual(stats.spokenSeconds, 40)
+        // 10 timed words over 40s → 15 wpm
+        XCTAssertEqual(stats.wordsPerMinute, 15)
+    }
+
+    func testWPMNeedsEnoughTimedMaterial() {
+        let items = [HistoryItem(text: "hello world", language: nil, audioSeconds: 5)]
+        XCTAssertNil(HistoryStore.stats(of: items).wordsPerMinute,
+                     "5s of audio is not enough to claim a words-per-minute")
+        XCTAssertEqual(HistoryStore.stats(of: []).words, 0)
+    }
 }
 
 // MARK: - History persistence

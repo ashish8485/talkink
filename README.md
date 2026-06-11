@@ -118,12 +118,41 @@ Menu bar → **Open Talkink** → *Settings* tab:
   Download several, switch instantly, delete what you don't use.
 - **Auto-paste at cursor**, feedback sounds, launch at login, check for updates.
 
+## Automation
+
+With **Allow URL automation** enabled (Settings → Behaviour), Raycast, Alfred,
+Apple Shortcuts or any terminal can drive dictation:
+
+```bash
+open "talkink://toggle"      # start hands-free dictation / stop & paste
+open "talkink://record"      # start (no-op while already recording)
+open "talkink://stop"        # stop & paste
+open "talkink://history"     # open the window on History
+open "talkink://settings"    # open Settings
+open "talkink://report"      # open a problem report
+```
+
+Dictation commands are **off by default** — any app could open a URL, and
+starting the microphone stays your explicit choice. Window commands always
+work. URL-started dictation is hands-free: tap your key (or `talkink://stop`)
+to finish.
+
 ## Network activity
 
 Talkink's transcription is 100% on-device. The only network calls are:
 
 1. **First-run model download** (~2.5 GB for the recommended Qwen3-ASR 1.7B; other catalog options range from 760 MB to 4.1 GB) from Hugging Face into `~/.cache/huggingface`. Downloads are resumable — quit anytime, it continues where it stopped.
-2. **Update check** (optional, toggle in Settings) — a request to the GitHub Releases API at launch. No usage telemetry is sent.
+2. **Update check** (optional, toggle in Settings) — Sparkle fetches `https://talkink.app/appcast.xml`. No usage telemetry is sent — there is nothing to send it to.
+
+**Verify it yourself** — while dictating, list the app's open connections:
+
+```bash
+lsof -i -a -p "$(pgrep -x Soyle)"    # no output = no connections
+```
+
+Block both endpoints (`huggingface.co`, `talkink.app`) in `/etc/hosts` and
+dictation keeps working — the models live on your disk. Problem reports open
+as a GitHub issue you review first; nothing ever leaves your Mac on its own.
 
 ## Troubleshooting
 

@@ -15,6 +15,13 @@ dictation features: custom vocabulary and hands-free.
 - **Hands-free dictation** — double-tap the push-to-talk key to lock
   recording on (the pill shows “Speak — tap to stop”), tap once to finish.
   Toggle in Settings → Dictation.
+- **URL automation** — `talkink://toggle`, `record`, `stop`, `history`,
+  `settings`, `report` for Raycast/Alfred/Shortcuts/terminal workflows.
+  Dictation commands are off by default (Settings → Behaviour) so no other
+  app can trigger the microphone without your explicit opt-in.
+- **Dictation stats** — the History tab now shows total words, minutes
+  spoken and your words-per-minute, computed from your kept history (local,
+  like everything else).
 - **Honest result pills** — every way a dictation can end now says what
   actually happened. Real silence reads "No speech detected"; clear speech
   that the model couldn't transcribe in your configured language reads
