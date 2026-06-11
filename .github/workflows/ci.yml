@@ -23,6 +23,11 @@ jobs:
         with:
           xcode-version: latest-stable
 
+      # Pure-logic suite (catalog, language mappings, VAD, memory verdicts,
+      # stores, hotkey interpretation) — no Metal, no models, no network.
+      - name: Unit tests
+        run: swift test
+
       - name: Build Talkink.app
         run: scripts/build_app.sh Release
 

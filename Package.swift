@@ -47,5 +47,14 @@ let package = Package(
             path: "Sources/SoyleCLI",
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
+        // Pure-logic tests (catalog, language mapping, VAD, memory verdicts,
+        // stores, hotkey interpretation) — no Metal, no models, no network,
+        // so `swift test` runs them anywhere.
+        .testTarget(
+            name: "SoyleTests",
+            dependencies: ["Soyle", "SoyleKit"],
+            path: "Tests/SoyleTests",
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
     ]
 )
