@@ -87,6 +87,70 @@ final class PushToTalkInterpretTests: XCTestCase {
     }
 }
 
+// MARK: - Hands-free double-tap machine
+
+final class TapMachineTests: XCTestCase {
+    func testPlainHoldAndRelease() {
+        var m = PushToTalk.TapMachine()
+        XCTAssertEqual(m.press(at: 0), .start)
+        XCTAssertEqual(m.release(at: 1.2), .stop)
+        XCTAssertFalse(m.locked)
+    }
+
+    func testDoubleTapLocksThenSingleTapStops() {
+        var m = PushToTalk.TapMachine()
+        XCTAssertEqual(m.press(at: 0), .start)        // tap 1 down
+        XCTAssertEqual(m.release(at: 0.15), .stop)    // tap 1 up (aborted mini-dictation)
+        XCTAssertEqual(m.press(at: 0.3), .start)      // tap 2 down → locks
+        XCTAssertTrue(m.locked)
+        XCTAssertEqual(m.release(at: 0.45), .none)    // up while locked: keep recording
+        XCTAssertTrue(m.locked)
+        XCTAssertEqual(m.press(at: 5.0), .stop)       // stop tap
+        XCTAssertFalse(m.locked)
+        XCTAssertEqual(m.release(at: 5.1), .none)     // its release is swallowed
+        XCTAssertEqual(m.press(at: 9.0), .start)      // normal PTT resumes
+        XCTAssertEqual(m.release(at: 10.0), .stop)
+    }
+
+    func testSlowSecondPressDoesNotLock() {
+        var m = PushToTalk.TapMachine()
+        _ = m.press(at: 0); _ = m.release(at: 0.15)
+        XCTAssertEqual(m.press(at: 1.0), .start)      // 0.85s later: just a new dictation
+        XCTAssertFalse(m.locked)
+    }
+
+    func testLongFirstHoldDoesNotLock() {
+        var m = PushToTalk.TapMachine()
+        _ = m.press(at: 0); _ = m.release(at: 2.0)    // a real dictation, not a tap
+        XCTAssertEqual(m.press(at: 2.2), .start)
+        XCTAssertFalse(m.locked, "re-pressing quickly after a long dictation must not lock")
+    }
+
+    func testDisabledSettingNeverLocks() {
+        var m = PushToTalk.TapMachine()
+        m.handsFreeEnabled = false
+        _ = m.press(at: 0); _ = m.release(at: 0.15)
+        _ = m.press(at: 0.3)
+        XCTAssertFalse(m.locked)
+    }
+
+    func testVeryFirstPressNeverLocks() {
+        var m = PushToTalk.TapMachine()
+        XCTAssertEqual(m.press(at: 0.1), .start)
+        XCTAssertFalse(m.locked)
+    }
+
+    func testResetClearsLockAndHistory() {
+        var m = PushToTalk.TapMachine()
+        _ = m.press(at: 0); _ = m.release(at: 0.15); _ = m.press(at: 0.3)
+        XCTAssertTrue(m.locked)
+        m.reset()
+        XCTAssertFalse(m.locked)
+        XCTAssertEqual(m.press(at: 0.4), .start)
+        XCTAssertFalse(m.locked, "post-reset press must not see pre-reset taps")
+    }
+}
+
 // MARK: - History persistence
 
 final class HistoryStoreTests: XCTestCase {

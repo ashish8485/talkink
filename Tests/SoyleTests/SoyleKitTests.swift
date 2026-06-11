@@ -217,6 +217,117 @@ final class ModelDownloaderLogicTests: XCTestCase {
     }
 }
 
+// MARK: - Vocabulary (custom dictionary)
+
+final class VocabularyTests: XCTestCase {
+    private let talkink = VocabularyEntry(phrase: "Talkink", variants: ["Talking", "tall kink"])
+
+    func testExactVariantIsReplacedCaseInsensitively() {
+        XCTAssertEqual(Vocabulary.apply(entries: [talkink], to: "I love talking"), "I love Talkink")
+        XCTAssertEqual(Vocabulary.apply(entries: [talkink], to: "Talking is great"), "Talkink is great")
+    }
+
+    func testMultiWordVariant() {
+        XCTAssertEqual(Vocabulary.apply(entries: [talkink], to: "open tall kink now"), "open Talkink now")
+    }
+
+    func testWordBoundariesAreRespected() {
+        // "talkings" must NOT match the "talking" variant.
+        XCTAssertEqual(Vocabulary.apply(entries: [talkink], to: "talkings"), "talkings")
+    }
+
+    func testFuzzyFixesUnknownWordsOnly() {
+        let unknownGate: (String) -> Bool = { _ in false }   // language knows nothing
+        let entries = [VocabularyEntry(phrase: "Talkink")]
+        XCTAssertEqual(Vocabulary.apply(entries: entries, to: "open Talkynk now", isKnownWord: unknownGate),
+                       "open Talkink now")
+    }
+
+    func testFuzzyNeverTouchesRealWords() {
+        // "Talkint" is 1 edit from "Talkink", but the language says it's a
+        // real word — the gate must win.
+        let knownGate: (String) -> Bool = { _ in true }
+        let entries = [VocabularyEntry(phrase: "Talkink")]
+        XCTAssertEqual(Vocabulary.apply(entries: entries, to: "Talkint", isKnownWord: knownGate), "Talkint")
+    }
+
+    func testFuzzyRequiresSameFirstLetterAndSmallDistance() {
+        let gate: (String) -> Bool = { _ in false }
+        let entries = [VocabularyEntry(phrase: "Talkink")]
+        XCTAssertEqual(Vocabulary.apply(entries: entries, to: "Walkink", isKnownWord: gate), "Walkink",
+                       "different first letter must not match")
+        XCTAssertEqual(Vocabulary.apply(entries: entries, to: "Taxxxnk", isKnownWord: gate), "Taxxxnk",
+                       "distance beyond the cap must not match")
+    }
+
+    func testFuzzySkipsShortWordsAndCanonicalForms() {
+        let gate: (String) -> Bool = { _ in false }
+        let entries = [VocabularyEntry(phrase: "Talkink")]
+        XCTAssertEqual(Vocabulary.apply(entries: entries, to: "tak", isKnownWord: gate), "tak")
+        XCTAssertEqual(Vocabulary.apply(entries: entries, to: "talkink rules", isKnownWord: gate), "talkink rules",
+                       "already-canonical words (any case) are left alone")
+    }
+
+    func testPunctuationAndSpacingSurviveFuzzyPass() {
+        let gate: (String) -> Bool = { _ in false }
+        let entries = [VocabularyEntry(phrase: "Talkink")]
+        XCTAssertEqual(Vocabulary.apply(entries: entries, to: "Hey, Talkynk! Right?", isKnownWord: gate),
+                       "Hey, Talkink! Right?")
+    }
+
+    func testLevenshteinWithCap() {
+        XCTAssertEqual(Vocabulary.levenshtein("talkink", "talkynk", cap: 2), 1)
+        XCTAssertEqual(Vocabulary.levenshtein("abc", "abc", cap: 1), 0)
+        XCTAssertGreaterThan(Vocabulary.levenshtein("abcdefg", "zzzzzzz", cap: 2), 2)
+    }
+
+    func testNoEntriesIsIdentity() {
+        XCTAssertEqual(Vocabulary.apply(entries: [], to: "anything at all"), "anything at all")
+    }
+
+    func testPersistenceRoundTripAndNormalization() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("soyle-vocab-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: dir) }
+        let journal = ErrorLog(fileURL: dir.appendingPathComponent("errors.json"))
+
+        let store = Vocabulary(directory: dir, errorLog: journal)
+        store.add(VocabularyEntry(phrase: "  PostgreSQL ", variants: [" postgres ql ", "", "PostgreSQL"]))
+        store.add(VocabularyEntry(phrase: "   ", variants: ["ignored"]))   // empty phrase → rejected
+
+        XCTAssertEqual(store.entries.count, 1)
+        XCTAssertEqual(store.entries[0].phrase, "PostgreSQL")
+        XCTAssertEqual(store.entries[0].variants, ["postgres ql"], "blank + phrase-identical variants are dropped")
+
+        let reloaded = Vocabulary(directory: dir, errorLog: journal)
+        XCTAssertEqual(reloaded.entries, store.entries)
+
+        var edited = store.entries[0]
+        edited.variants = ["postgresql db"]
+        store.update(edited)
+        XCTAssertEqual(store.entries[0].variants, ["postgresql db"])
+        store.remove(store.entries[0])
+        XCTAssertTrue(store.entries.isEmpty)
+    }
+
+    func testCorruptVocabularyIsPreserved() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("soyle-vocab-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: dir) }
+        try Data("nope".utf8).write(to: dir.appendingPathComponent("vocabulary.json"))
+
+        let journal = ErrorLog(fileURL: dir.appendingPathComponent("errors.json"))
+        let store = Vocabulary(directory: dir, errorLog: journal)
+        XCTAssertTrue(store.entries.isEmpty)
+        XCTAssertNotNil(store.lastError)
+        let backups = try FileManager.default.contentsOfDirectory(atPath: dir.path)
+            .filter { $0.hasPrefix("vocabulary.corrupt-") }
+        XCTAssertEqual(backups.count, 1)
+    }
+}
+
 // MARK: - Error journal
 
 final class ErrorLogTests: XCTestCase {
