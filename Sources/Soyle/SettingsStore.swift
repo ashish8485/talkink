@@ -138,6 +138,12 @@ final class SettingsStore: ObservableObject {
     @Published var hasPickedLanguage: Bool {
         didSet { defaults.set(hasPickedLanguage, forKey: K.hasPickedLanguage) }
     }
+    /// Set on the first launch of a new version — drives this session's
+    /// "updated" banner. Not persisted.
+    @Published var justUpdatedToVersion: String?
+    /// Why "Launch at login" couldn't be applied (shown under the toggle).
+    @Published var loginItemError: String?
+    private var revertingLoginItem = false
 
     private init() {
         language = SoyleLanguage(rawValue: defaults.string(forKey: K.language) ?? "") ?? .auto
@@ -156,14 +162,23 @@ final class SettingsStore: ObservableObject {
     }
 
     private func applyLoginItem(_ on: Bool) {
+        guard !revertingLoginItem else { return }
         do {
             if on {
                 if SMAppService.mainApp.status != .enabled { try SMAppService.mainApp.register() }
             } else {
                 if SMAppService.mainApp.status == .enabled { try SMAppService.mainApp.unregister() }
             }
+            loginItemError = nil
         } catch {
-            NSLog("Talkink: login item update failed: \(error.localizedDescription)")
+            loginItemError = "Couldn't \(on ? "enable" : "disable") it — \(error.localizedDescription)"
+            ErrorLog.shared.record(component: "settings",
+                                   message: "Launch-at-login toggle failed",
+                                   detail: error.localizedDescription)
+            // Snap the toggle back to what the system actually says.
+            revertingLoginItem = true
+            launchAtLogin = (SMAppService.mainApp.status == .enabled)
+            revertingLoginItem = false
         }
     }
 }

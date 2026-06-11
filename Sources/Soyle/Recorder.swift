@@ -1,22 +1,32 @@
 import Foundation
 import AVFoundation
+import SoyleKit
 
 /// Captures the microphone during a push-to-talk window and produces
-/// 16 kHz mono Float32 samples (what Nemotron expects). AVAudioConverter
+/// 16 kHz mono Float32 samples (what all our models expect). AVAudioConverter
 /// handles resampling (48k/44.1k → 16k) and downmix in one pass.
 final class Recorder {
     private let engine = AVAudioEngine()
     private var converter: AVAudioConverter?
+    // Constructible by definition (PCM Float32 mono 16k is always a valid
+    // format) — the failure paths that exist in practice are guarded in
+    // installTap (0 Hz device, converter creation).
     private let targetFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32,
                                              sampleRate: 16_000, channels: 1, interleaved: false)!
     private var samples: [Float] = []
     private let sampleLock = NSLock()
     private var isRecording = false
     private var configObserver: NSObjectProtocol?
+    private var convertFailureLogged = false
 
     /// Called frequently on a background thread with a 0...1 input level (RMS),
     /// for the live waveform/meter.
     var onLevel: (Float) -> Void = { _ in }
+
+    /// The capture broke mid-recording (device yanked, engine restart failed)
+    /// and recovery failed — recording continues into the void unless the
+    /// owner stops it and tells the user.
+    var onFailure: (String) -> Void = { _ in }
 
     var recording: Bool { isRecording }
 
@@ -24,6 +34,7 @@ final class Recorder {
     func start() throws {
         guard !isRecording else { return }
         sampleLock.lock(); samples.removeAll(keepingCapacity: true); sampleLock.unlock()
+        convertFailureLogged = false
 
         try installTap()
         engine.prepare()
@@ -78,7 +89,14 @@ final class Recorder {
             throw NSError(domain: "Soyle.Recorder", code: 1,
                           userInfo: [NSLocalizedDescriptionKey: "No audio input device available."])
         }
-        converter = AVAudioConverter(from: hwFormat, to: targetFormat)
+        // A nil converter would silently drop every buffer in process() —
+        // the user would speak into a recording that captures nothing.
+        guard let converter = AVAudioConverter(from: hwFormat, to: targetFormat) else {
+            throw NSError(domain: "Soyle.Recorder", code: 2,
+                          userInfo: [NSLocalizedDescriptionKey:
+                            "Can't convert \(Int(hwFormat.sampleRate)) Hz input to 16 kHz."])
+        }
+        self.converter = converter
         input.installTap(onBus: 0, bufferSize: 4096, format: hwFormat) { [weak self] buffer, _ in
             self?.process(buffer: buffer, hwFormat: hwFormat)
         }
@@ -90,8 +108,10 @@ final class Recorder {
         do {
             try installTap()
             if !engine.isRunning { engine.prepare(); try engine.start() }
+            Log.audio.notice("audio route changed mid-recording — capture re-armed")
         } catch {
-            NSLog("Talkink: audio reconfig recovery failed: \(error.localizedDescription)")
+            Log.audio.error("audio reconfig recovery failed: \(error.localizedDescription, privacy: .public)")
+            onFailure("Microphone changed and couldn't be recovered (\(error.localizedDescription))")
         }
     }
 
@@ -111,6 +131,12 @@ final class Recorder {
         }
         var err: NSError?
         let result = converter.convert(to: out, error: &err, withInputFrom: inputBlock)
+        if let err, !convertFailureLogged {
+            // Once per session — a converter that fails usually fails for
+            // every buffer, and the empty capture is surfaced at stop time.
+            convertFailureLogged = true
+            Log.audio.error("sample conversion failing: \(err.localizedDescription, privacy: .public)")
+        }
         guard result == .haveData, out.frameLength > 0, let ch = out.floatChannelData else { return }
 
         let n = Int(out.frameLength)

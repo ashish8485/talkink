@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case recording
         case transcribing
         case needsInputMonitoring
+        case loadFailed(String)             // model load/download failed — reason stays visible in the menu
     }
 
     private let settings = SettingsStore.shared
@@ -23,22 +24,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var cancellables = Set<AnyCancellable>()
     private var armTimer: Timer?
-    private var modelLoadFailed = false
+    private var modelLoadFailed = false          // retry trigger (display lives in .loadFailed)
+    private var lastLoadFailureReason: String?
+    private var updateAvailableVersion: String?  // set by Sparkle → prominent menu item
     private var languageRescues = 0              // empty transcripts rescued by auto-detect
     private var loadTask: Task<Void, Never>?     // the one tracked selected-model load
     private var pendingStop: DispatchWorkItem?   // release-grace timer (tail capture)
     private var dictationGeneration = 0          // ignore stale transcription completions
+    private var recordingStartedAt: Date?        // wall clock, to spot dead-capture sessions
+    private var transcriptionWatchdog: DispatchWorkItem?
     private var state: AppState = .loadingModel(progress: nil) { didSet { updateMenu(); updateStatusIcon() } }
 
     // MARK: Lifecycle
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        CrashSentinel.checkAndArm()
         setupStatusItem()
 
         recorder.onLevel = { [weak self] lvl in self?.overlay.updateLevel(lvl) }
+        recorder.onFailure = { [weak self] reason in
+            DispatchQueue.main.async { self?.recordingBroke(reason) }
+        }
         ptt.onStart = { [weak self] in self?.startRecording() }
         ptt.onStop = { [weak self] in self?.stopRecording() }
+        ptt.onTapDisabled = { [weak self] in self?.tapDied() }
         // Menu-bar % follows the SELECTED model's download in the center
         // (downloads of other models run concurrently and don't touch it).
         ModelDownloadCenter.shared.$states
@@ -63,18 +73,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .dropFirst()
             .sink { Updater.shared.automaticallyChecksForUpdates = $0 }
             .store(in: &cancellables)
+        // An available update should never hide behind "Check for Updates…" —
+        // Sparkle's own alert pops, and the menu gets a prominent install item.
+        Updater.shared.onUpdateAvailable = { [weak self] version in
+            self?.updateAvailableVersion = version
+            self?.updateMenu()
+        }
+
+        announceVersionChangeIfNeeded()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        CrashSentinel.disarm()
         ptt.stop()
         pendingStop?.cancel()
         _ = recorder.stop()
         armTimer?.invalidate()
     }
 
+    /// First launch of a new version: open the window so the user SEES the
+    /// update landed (menu-bar apps otherwise update invisibly) — and a failed
+    /// post-update relaunch self-heals into a visible confirmation when the
+    /// user relaunches manually.
+    private func announceVersionChangeIfNeeded() {
+        let current = (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "dev"
+        let key = "soyle.lastLaunchedVersion"
+        let previous = UserDefaults.standard.string(forKey: key)
+        UserDefaults.standard.set(current, forKey: key)
+        guard let previous, previous != current else { return }
+        Log.app.notice("updated \(previous, privacy: .public) → \(current, privacy: .public)")
+        settings.justUpdatedToVersion = current
+        DispatchQueue.main.async { [weak self] in self?.openSettings() }
+    }
+
     func applicationDidBecomeActive(_ notification: Notification) {
         tryRearm()
-        // Recover a failed first-run model load (e.g. offline) without a relaunch.
+        // Recover a failed model load (e.g. offline at first run) without a relaunch.
         if modelLoadFailed, !engine.isLoaded {
             loadModel()
         }
@@ -93,7 +127,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard state == .needsInputMonitoring, Permissions.hasInputMonitoring else { return }
         if ptt.start() {
             armTimer?.invalidate(); armTimer = nil
-            state = engine.isLoaded ? .ready : .loadingModel(progress: nil)
+            if engine.isLoaded {
+                state = .ready
+            } else if modelLoadFailed {
+                state = .loadFailed(lastLoadFailureReason ?? "Model not loaded — it retries when you dictate")
+            } else {
+                state = .loadingModel(progress: nil)
+            }
         }
     }
 
@@ -129,7 +169,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func startModelLoad(of target: ASRModelOption) {
         loadTask?.cancel()
         modelLoadFailed = false
-        state = .loadingModel(progress: nil)
+        // Pre-flight: refuse a load that can't fit in unified memory — letting
+        // MLX try anyway can abort the whole process (Metal allocation failure),
+        // which to the user is "the app vanished".
+        switch SystemResources.memoryVerdict(forWeightsGB: target.sizeGB) {
+        case .insufficient(let message):
+            registerLoadFailure(reason: message, target: target)
+            overlay.show(.error(message), autoHideAfter: 5)
+            return
+        case .tight(let message):
+            ErrorLog.shared.record(component: "model", message: "\(target.displayName): \(message)")
+            overlay.show(.error(message), autoHideAfter: 4)
+        case .ok:
+            break
+        }
+        // Never clobber the permission gate — it owns the menu until the tap
+        // is armed (otherwise the re-arm timer's guard can never fire and the
+        // app shows "Ready" with a dead hotkey).
+        if state != .needsInputMonitoring { state = .loadingModel(progress: nil) }
         let center = ModelDownloadCenter.shared
         loadTask = Task { @MainActor in
             do {
@@ -152,10 +209,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 center.clearLoadMarker(target)
             } catch {
                 center.clearLoadMarker(target)
-                modelLoadFailed = true
-                overlay.show(.error("Load failed — will retry on next activation"), autoHideAfter: 3)
+                let reason = Self.loadFailureMessage(for: error)
+                registerLoadFailure(reason: reason, target: target, detail: String(describing: error))
+                overlay.show(.error(reason), autoHideAfter: 4)
             }
         }
+    }
+
+    private func registerLoadFailure(reason: String, target: ASRModelOption, detail: String? = nil) {
+        modelLoadFailed = true
+        lastLoadFailureReason = reason
+        ErrorLog.shared.record(component: "model",
+                               message: "\(target.displayName) couldn't load — \(reason)",
+                               detail: detail)
+        if state != .needsInputMonitoring { state = .loadFailed(reason) }
+    }
+
+    /// Honest, actionable load-failure wording (offline vs disk vs generic).
+    private static func loadFailureMessage(for error: Error) -> String {
+        if let preflight = error as? PreflightError {
+            return preflight.errorDescription ?? "Pre-flight check failed."
+        }
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .notConnectedToInternet, .dataNotAllowed, .cannotFindHost, .dnsLookupFailed:
+                return "Can't download the model — you appear to be offline. It retries when you dictate."
+            case .timedOut, .networkConnectionLost:
+                return "The model download was interrupted — it resumes when you dictate."
+            default:
+                break
+            }
+        }
+        let ns = error as NSError
+        if ns.domain == NSCocoaErrorDomain, ns.code == NSFileWriteOutOfSpaceError {
+            return "Not enough disk space to finish the model download."
+        }
+        return "The model couldn't load (\(ns.localizedDescription)). See Settings → Report a Problem."
     }
 
     private func observeSettings() {
@@ -183,11 +272,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func reloadModel(_ newModel: ASRModelOption) {
+        // Refuse a switch that can't fit in memory BEFORE dropping the current
+        // weights: the user keeps a working model and learns why.
+        if case .insufficient(let message) = SystemResources.memoryVerdict(forWeightsGB: newModel.sizeGB) {
+            ErrorLog.shared.record(component: "model",
+                                   message: "\(newModel.displayName) selection refused — \(message)")
+            presentModelRefused(newModel, reason: message)
+            if settings.modelID != engine.model.id {
+                settings.modelID = engine.model.id   // snap the picker back to reality
+            }
+            return
+        }
         // Leaving .recording without stopping the recorder would swallow the
         // PTT release in stopRecording's guard and leave the mic running.
         abortRecordingIfNeeded()
         engine.switchModel(to: newModel)
         startModelLoad(of: newModel)
+    }
+
+    private func presentModelRefused(_ model: ASRModelOption, reason: String) {
+        let alert = NSAlert()
+        alert.messageText = "\(model.displayName) won't fit in memory"
+        alert.informativeText = reason
+        alert.addButton(withTitle: "OK")
+        NSApp.activate(ignoringOtherApps: true)
+        alert.runModal()
     }
 
     // MARK: Recording flow
@@ -204,6 +313,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if case .loadingModel(let pct) = state {
                 overlay.show(.error(pct != nil ? "Downloading model…" : "Model is loading…"),
                              autoHideAfter: 1.5)
+            } else if case .loadFailed = state {
+                // "Retries when you dictate" — keep that promise right here.
+                overlay.show(.error("Model not loaded — retrying now…"), autoHideAfter: 2)
+                loadModel()
             } else if state == .needsInputMonitoring {
                 promptInputMonitoring()
             }
@@ -221,12 +334,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         do {
             if recorder.recording { _ = recorder.stop() }  // defensive: stale session
             try recorder.start()
+            recordingStartedAt = Date()
             state = .recording
             overlay.show(.recording)
             playSound(start: true)
         } catch {
-            overlay.show(.error("Microphone unavailable"), autoHideAfter: 2)
+            ErrorLog.shared.record(component: "audio",
+                                   message: "Recording couldn't start",
+                                   detail: error.localizedDescription)
+            overlay.show(.error("Microphone unavailable — \(error.localizedDescription)"), autoHideAfter: 3)
         }
+    }
+
+    /// Mid-recording capture failure (device yanked and recovery failed):
+    /// stop cleanly and say so — never keep "recording" silence.
+    private func recordingBroke(_ reason: String) {
+        ErrorLog.shared.record(component: "audio", message: "Recording aborted — \(reason)")
+        guard state == .recording else { return }
+        abortRecordingIfNeeded()
+        state = .ready
+        overlay.show(.error("Microphone lost — dictation stopped"), autoHideAfter: 3)
+    }
+
+    /// The event tap died and PushToTalk's re-enable didn't stick: recreate it,
+    /// or fall back to the permission gate — never a silently dead hotkey.
+    private func tapDied() {
+        ErrorLog.shared.record(component: "hotkey",
+                               message: "Push-to-talk tap disabled by the system and re-enable failed")
+        ptt.stop()
+        if Permissions.hasInputMonitoring, ptt.start() {
+            Log.app.notice("event tap recreated after system disable")
+            return
+        }
+        state = .needsInputMonitoring
+        startArmTimer()
+        overlay.show(.error("Push-to-talk lost — check Input Monitoring"), autoHideAfter: 4)
     }
 
     private func stopRecording() {
@@ -250,19 +392,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func finishStop() {
         pendingStop = nil
         let samples = recorder.stop()
+        let wallClock = recordingStartedAt.map { Date().timeIntervalSince($0) } ?? 0
+        recordingStartedAt = nil
 
-        // Ignore accidental taps (< 0.25s of speech + the 0.25s tail).
+        // Ignore accidental taps (< 0.25s of speech + the 0.25s tail) — but a
+        // LONG hold that produced (near) nothing is a broken capture, not a
+        // tap: the user spoke into a dead pipeline and must know.
         guard samples.count >= 8_000 else {
-            if state == .transcribing {
-                state = .ready
+            if wallClock >= 1.5 {
+                ErrorLog.shared.record(component: "audio", message: String(
+                    format: "Held the key %.1fs but captured only %d samples — the input device produced no audio",
+                    wallClock, samples.count))
+                overlay.show(.error("No audio captured — check your input device (System Settings → Sound)"),
+                             autoHideAfter: 4)
+            } else {
                 overlay.hide()
             }
+            if state == .transcribing { state = .ready }
             return
         }
 
         dictationGeneration += 1
         let gen = dictationGeneration
         let lang = settings.language.engineCode
+
+        // Watchdog: an inference that hangs (Metal stall, library bug) must not
+        // leave "Transcribing…" on screen forever with the hotkey locked out.
+        let watchdog = DispatchWorkItem { [weak self] in
+            guard let self, self.state == .transcribing, gen == self.dictationGeneration else { return }
+            ErrorLog.shared.record(component: "model",
+                                   message: "Transcription still running after 120s — state reset so dictation keeps working")
+            self.state = .ready
+            self.overlay.show(.error("Transcription stalled — please try again (and Report a Problem)"),
+                              autoHideAfter: 5)
+        }
+        transcriptionWatchdog?.cancel()
+        transcriptionWatchdog = watchdog
+        DispatchQueue.main.asyncAfter(deadline: .now() + 120, execute: watchdog)
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self else { return }
@@ -279,32 +445,96 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         DispatchQueue.main.async { self.noteLanguageRescue() }
                     }
                 }
+                let text = result.text
                 DispatchQueue.main.async {
-                    let text = result.text
-                    var pasted = false
-                    if !text.isEmpty {
-                        Clipboard.copy(text)                                  // always: paste manually with ⌘V
-                        if AutoPaster.secureInputActive {
-                            // Likely a password field — keep it out of the on-disk history.
-                        } else {
-                            HistoryStore.shared.add(text: text, language: lang)
-                        }
-                        if self.settings.autoPaste, AutoPaster.paste() == .pasted { pasted = true }
-                    }
-                    // A newer dictation may already own the UI — don't clobber it.
-                    if self.state == .transcribing, gen == self.dictationGeneration {
-                        self.overlay.show(.done(text, pasted: pasted), autoHideAfter: text.isEmpty ? 1.2 : 1.0)
-                        self.state = .ready
-                    }
+                    self.transcriptionWatchdog?.cancel()
+                    self.deliver(text: text, samples: samples, forcedLanguage: lang, generation: gen)
                 }
             } catch {
                 DispatchQueue.main.async {
+                    self.transcriptionWatchdog?.cancel()
+                    ErrorLog.shared.record(component: "model",
+                                           message: "Transcription failed",
+                                           detail: error.localizedDescription)
                     if self.state == .transcribing, gen == self.dictationGeneration {
-                        self.overlay.show(.error("Transcription error"), autoHideAfter: 2)
+                        self.overlay.show(.error("Transcription error — \(error.localizedDescription)"),
+                                          autoHideAfter: 3)
                         self.state = .ready
                     }
                 }
             }
+        }
+    }
+
+    /// Hand the transcript to the user, with an honest account of what
+    /// happened: empty results are explained (silence vs unrecognized speech
+    /// vs language mismatch), clipboard writes are verified, and a skipped
+    /// auto-paste always says why.
+    private func deliver(text: String, samples: [Float], forcedLanguage lang: String?, generation gen: Int) {
+        let isCurrent = (state == .transcribing && gen == dictationGeneration)
+        let outcome: DictationOutcome
+
+        if text.isEmpty {
+            let stats = SpeechStats.analyze(samples: samples)
+            if !stats.likelySpeech {
+                outcome = .noSpeech
+            } else if lang != nil {
+                // Auto-detect rescue already ran and stayed empty too.
+                outcome = .wrongLanguage(settings.language.displayName)
+                ErrorLog.shared.record(component: "model", message: String(
+                    format: "Speech detected (%.1fs active, peak %.3f) but empty transcript with language %@ — auto rescue empty too",
+                    stats.activeSeconds, stats.peakRMS, settings.language.displayName))
+            } else {
+                outcome = .notRecognized
+                ErrorLog.shared.record(component: "model", message: String(
+                    format: "Speech detected (%.1fs active) but the model returned an empty transcript (language: auto)",
+                    stats.activeSeconds))
+            }
+        } else {
+            if !AutoPaster.secureInputActive {
+                // Words are never lost, even when a newer dictation owns the UI.
+                HistoryStore.shared.add(text: text, language: lang)
+            }
+            guard isCurrent else { return }   // stale: archived above, hands off the clipboard
+            guard Clipboard.copy(text) else {
+                // No ⌘V either — synthesizing it would paste the clipboard's
+                // PREVIOUS content into the user's document.
+                ErrorLog.shared.record(component: "paste",
+                                       message: "Clipboard write failed — transcript NOT copied (it is in History)")
+                overlay.show(.error("Couldn't copy — recover the text from History"), autoHideAfter: 4)
+                state = .ready
+                return
+            }
+            if settings.autoPaste {
+                switch AutoPaster.paste() {
+                case .pasted:
+                    outcome = .pasted
+                case .noAccessibility:
+                    outcome = .copiedNoAccessibility
+                    ErrorLog.shared.record(component: "paste",
+                                           message: "Auto-paste skipped — Accessibility not granted")
+                case .secureField:
+                    outcome = .copiedSecureField
+                }
+            } else {
+                outcome = .copied
+            }
+        }
+
+        if isCurrent {
+            overlay.show(.done(text, outcome: outcome), autoHideAfter: Self.hideDelay(for: outcome))
+            state = .ready
+        }
+    }
+
+    /// Successes vanish fast; anything the user should read lingers.
+    private static func hideDelay(for outcome: DictationOutcome) -> Double {
+        switch outcome {
+        case .pasted, .copied: return 1.0
+        case .noSpeech: return 1.6
+        case .copiedSecureField: return 3.0
+        case .copiedNoAccessibility, .notRecognized: return 3.5
+        case .wrongLanguage: return 4.5
         }
     }
 
@@ -347,7 +577,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         switch state {
         case .recording: symbol = "mic.fill"
         case .transcribing: symbol = "waveform"
-        case .needsInputMonitoring: symbol = "exclamationmark.triangle.fill"
+        case .needsInputMonitoring, .loadFailed: symbol = "exclamationmark.triangle.fill"
         default: symbol = "mic"
         }
         button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: "Talkink")
@@ -363,8 +593,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(status)
         menu.addItem(.separator())
 
+        // An available update gets a first-class item — nobody should have to
+        // think of clicking "Check for Updates…" to learn about it.
+        if let version = updateAvailableVersion {
+            menu.addItem(item("⬆️ Update to \(version) — Install…", #selector(checkForUpdates)))
+            menu.addItem(.separator())
+        }
+
         if state == .needsInputMonitoring {
             menu.addItem(item("Allow “Input Monitoring”…", #selector(promptInputMonitoringMenu)))
+            menu.addItem(.separator())
+        }
+        if case .loadFailed = state {
+            menu.addItem(item("Retry Loading the Model", #selector(retryModelLoad)))
             menu.addItem(.separator())
         }
 
@@ -412,6 +653,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         menu.addItem(item("Open Talkink (history, settings)…", #selector(openSettings), key: ","))
         menu.addItem(item("Check for Updates…", #selector(checkForUpdates)))
+        menu.addItem(item("Report a Problem…", #selector(reportProblem)))
         menu.addItem(item("About Talkink", #selector(about)))
         menu.addItem(.separator())
         menu.addItem(item("Quit Talkink", #selector(quit), key: "q"))
@@ -432,6 +674,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .recording: return "🎙 Recording…"
         case .transcribing: return "✍️ Transcribing…"
         case .needsInputMonitoring: return "⚠️ Permission required"
+        case .loadFailed(let reason): return "⚠️ \(String(reason.prefix(72)))"
         }
     }
 
@@ -477,6 +720,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func checkForUpdates() { Updater.shared.checkForUpdates() }
+
+    @objc private func retryModelLoad() { loadModel() }
+
+    @objc private func reportProblem() {
+        settingsWindowController.show()
+        NotificationCenter.default.post(name: .soyleOpenReport, object: nil)
+    }
 
     @objc private func promptInputMonitoringMenu() { openSettings() }
 

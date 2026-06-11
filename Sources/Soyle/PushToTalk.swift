@@ -57,6 +57,9 @@ final class PushToTalk {
 
     var onStart: () -> Void = {}
     var onStop: () -> Void = {}
+    /// The OS disabled the tap and our re-enable did not stick — push-to-talk
+    /// is dead until something re-arms it. Called on the main queue.
+    var onTapDisabled: () -> Void = {}
 
     private var tap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -126,9 +129,16 @@ final class PushToTalk {
 
     private func handle(type: CGEventType, event: CGEvent) {
         // The OS can disable the tap if our callback is slow or on user input;
-        // re-arm it so PTT keeps working for the whole session.
+        // re-arm it so PTT keeps working for the whole session. If the
+        // re-enable doesn't stick (revoked permission, system policy), the
+        // key is dead — say so instead of leaving a silently broken hotkey.
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
+            if let tap {
+                CGEvent.tapEnable(tap: tap, enable: true)
+                if !CGEvent.tapIsEnabled(tap: tap) {
+                    DispatchQueue.main.async { [weak self] in self?.onTapDisabled() }
+                }
+            }
             return
         }
 

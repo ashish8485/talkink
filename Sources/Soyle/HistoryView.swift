@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import SoyleKit
 
 /// Browsable history of past transcriptions. Click a row to re-copy it.
 struct HistoryView: View {
@@ -16,6 +17,13 @@ struct HistoryView: View {
         VStack(spacing: 0) {
             toolbar
             Divider()
+            if let storageError = history.lastError {
+                Label(storageError, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption).foregroundStyle(.orange)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 14).padding(.vertical, 6)
+                Divider()
+            }
             if history.items.isEmpty {
                 emptyState
             } else if filtered.isEmpty {
@@ -52,7 +60,13 @@ struct HistoryView: View {
 
     private func row(_ item: HistoryItem) -> some View {
         Button {
-            Clipboard.copy(item.text)
+            // Show the checkmark only when the text actually landed on the
+            // clipboard — a fake "Copied" would hide a real failure.
+            guard Clipboard.copy(item.text) else {
+                ErrorLog.shared.record(component: "paste",
+                                       message: "Clipboard write failed when re-copying from History")
+                return
+            }
             withAnimation { copiedID = item.id }
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
                 if copiedID == item.id { withAnimation { copiedID = nil } }
@@ -90,7 +104,12 @@ struct HistoryView: View {
         }
         .buttonStyle(.plain)
         .contextMenu {
-            Button("Copy") { Clipboard.copy(item.text) }
+            Button("Copy") {
+                if !Clipboard.copy(item.text) {
+                    ErrorLog.shared.record(component: "paste",
+                                           message: "Clipboard write failed when copying from History")
+                }
+            }
             Button("Delete", role: .destructive) { history.delete(item) }
         }
     }

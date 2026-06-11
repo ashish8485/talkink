@@ -8,7 +8,9 @@ struct SettingsView: View {
     @ObservedObject var settings: SettingsStore
     @ObservedObject var perms: PermissionsModel
     @ObservedObject var downloads = ModelDownloadCenter.shared
+    @ObservedObject var errorLog = ErrorLog.shared
     @State private var deleteCandidate: ASRModelOption?
+    @State private var showReport = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -20,6 +22,7 @@ struct SettingsView: View {
                     dictationSection
                     modelSection
                     behaviourSection
+                    supportSection
                 }
                 .formStyle(.grouped)
                 .onAppear {
@@ -33,6 +36,10 @@ struct SettingsView: View {
             }
             footer
         }
+        .sheet(isPresented: $showReport) { ReportProblemView() }
+        .onReceive(NotificationCenter.default.publisher(for: .soyleOpenReport)) { _ in
+            showReport = true
+        }
     }
 
     // MARK: Header
@@ -45,7 +52,16 @@ struct SettingsView: View {
             }
             .frame(width: 50, height: 50)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Talkink").font(.system(size: 22, weight: .bold))
+                HStack(spacing: 8) {
+                    Text("Talkink").font(.system(size: 22, weight: .bold))
+                    if let version = settings.justUpdatedToVersion {
+                        Text("UPDATED TO v\(version)")
+                            .font(.system(size: 8.5, weight: .bold))
+                            .padding(.horizontal, 5).padding(.vertical, 1.5)
+                            .background(Capsule().fill(Color.nvidia.opacity(0.18)))
+                            .foregroundStyle(Color.nvidia)
+                    }
+                }
                 Text("Hold \(settings.pttKey.displayName), speak, release.")
                     .font(.system(size: 12)).foregroundStyle(.secondary)
             }
@@ -146,8 +162,14 @@ struct SettingsView: View {
         } header: {
             Text("Model")
         } footer: {
-            Text("Models download once and stay on your Mac — you can grab several at the same time and switch instantly.")
-                .font(.caption).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 4) {
+                if let actionError = downloads.lastActionError {
+                    Label(actionError, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption).foregroundStyle(.orange)
+                }
+                Text("Models download once and stay on your Mac — you can grab several at the same time and switch instantly.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -329,8 +351,10 @@ struct SettingsView: View {
                 Text("Preparing the model…").font(.caption).foregroundStyle(.secondary)
             }
             .padding(.leading, 26).padding(.vertical, 3)
-        case .failed:
-            Label("Download failed — check your connection, then Retry.", systemImage: "exclamationmark.triangle.fill")
+        case .failed(let reason):
+            // The actual reason (offline / rate-limit / disk full…), not a
+            // generic shrug — the user should know what to fix before Retry.
+            Label(reason, systemImage: "exclamationmark.triangle.fill")
                 .font(.caption).foregroundStyle(.orange)
                 .padding(.leading, 26).padding(.vertical, 3)
         default:
@@ -358,7 +382,50 @@ struct SettingsView: View {
             Toggle("Paste automatically at the cursor", isOn: $settings.autoPaste)
             Toggle("Feedback sounds", isOn: $settings.playSounds)
             Toggle("Launch at login", isOn: $settings.launchAtLogin)
+            if let loginError = settings.loginItemError {
+                Label(loginError, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption).foregroundStyle(.orange)
+            }
             Toggle("Check for updates automatically", isOn: $settings.checkForUpdates)
+        }
+    }
+
+    // MARK: Support — the error journal is user-visible by design: nothing
+    // fails silently, and a GitHub report is one click away.
+
+    private var supportSection: some View {
+        Section {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Something not working?").font(.system(size: 13, weight: .medium))
+                    Text("The report shows exactly what would be shared — never your transcripts.")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer()
+                Button("Report a Problem…") { showReport = true }
+                    .buttonStyle(.bordered).tint(.nvidia)
+            }
+            .padding(.vertical, 2)
+            if !errorLog.entries.isEmpty {
+                DisclosureGroup("Recent issues (\(errorLog.entries.count))") {
+                    ForEach(errorLog.entries.prefix(5)) { entry in
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(entry.message)
+                                .font(.caption)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Text("\(entry.component) · \(entry.date.formatted(date: .abbreviated, time: .shortened))")
+                                .font(.caption2).foregroundStyle(.secondary)
+                        }
+                        .padding(.vertical, 2)
+                    }
+                    Button("Clear journal") { ErrorLog.shared.clear() }
+                        .buttonStyle(.borderless).font(.caption)
+                }
+                .font(.system(size: 12))
+            }
+        } header: {
+            Text("Support")
         }
     }
 

@@ -1,6 +1,11 @@
 import Foundation
 import SoyleKit
 
+extension ModelDownloadCenter.ModelState {
+    /// True for any `.failed` payload — keeps call sites readable.
+    var isFailed: Bool { if case .failed = self { return true } else { return false } }
+}
+
 /// Single source of truth for every catalog model's on-disk/download state.
 /// Downloads run concurrently (one task per repo), are cancellable, and
 /// resume byte-exactly thanks to `ModelDownloader`'s `.part` files — so the
@@ -17,10 +22,12 @@ final class ModelDownloadCenter: ObservableObject {
         case downloaded            // complete on disk, not the active model
         case preparing             // selected: weights → memory / Metal warm-up
         case active                // selected, loaded, ready to dictate
-        case failed                // download failed (offline…) — retryable
+        case failed(String)        // download failed — human-readable reason, retryable
     }
 
     @Published private(set) var states: [String: ModelState] = [:]
+    /// Last non-download action that failed (delete…) — surfaced in Settings.
+    @Published var lastActionError: String?
 
     private var downloadTasks: [String: Task<Void, Error>] = [:]
 
@@ -69,6 +76,20 @@ final class ModelDownloadCenter: ObservableObject {
         default:
             break
         }
+        // Pre-flight: a download doomed by disk space should fail instantly
+        // with the reason, not at 97% twenty minutes in. (The HF cache lives
+        // under the home volume.)
+        let neededBytes = max(Int64(option.sizeGB * 1_000_000_000) - ModelDownloader.diskUsage(repo: option.id), 0)
+        if let free = SystemResources.freeDiskBytes(for: FileManager.default.homeDirectoryForCurrentUser),
+           free < neededBytes + 500_000_000 {
+            let neededGB = Double(neededBytes) / 1_000_000_000
+            let freeGB = Double(free) / 1_000_000_000
+            let message = String(format: "Not enough disk space — needs ~%.1f GB, %.1f GB free.", neededGB, freeGB)
+            states[option.id] = .failed(message)
+            ErrorLog.shared.record(component: "download",
+                                   message: "\(option.displayName): \(message)")
+            return Task { throw PreflightError.notEnoughDisk(neededGB: neededGB, freeGB: freeGB) }
+        }
         states[option.id] = .downloading(0)
         let task = Task<Void, Error> { [weak self] in
             do {
@@ -102,7 +123,11 @@ final class ModelDownloadCenter: ObservableObject {
                             self.states[option.id] = .notDownloaded
                         }
                     } else {
-                        self.states[option.id] = .failed
+                        let reason = Self.humanMessage(for: error)
+                        self.states[option.id] = .failed(reason)
+                        ErrorLog.shared.record(component: "download",
+                                               message: "\(option.displayName) download failed — \(reason)",
+                                               detail: String(describing: error))
                     }
                 }
                 throw error
@@ -110,6 +135,37 @@ final class ModelDownloadCenter: ObservableObject {
         }
         downloadTasks[option.id] = task
         return task
+    }
+
+    /// Raw transport errors → something the user can act on.
+    static func humanMessage(for error: Error) -> String {
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .notConnectedToInternet, .dataNotAllowed:
+                return "You appear to be offline."
+            case .networkConnectionLost:
+                return "The connection dropped — Resume picks up where it stopped."
+            case .timedOut:
+                return "The connection timed out — check your network, then Retry."
+            case .cannotFindHost, .dnsLookupFailed, .cannotConnectToHost:
+                return "huggingface.co can't be reached (network or DNS)."
+            default:
+                break
+            }
+        }
+        if case ModelDownloader.DownloadError.badStatus(let code, _) = error {
+            switch code {
+            case 401, 403: return "Hugging Face refused the request (HTTP \(code))."
+            case 429: return "Hugging Face is rate-limiting downloads — wait a minute, then Retry."
+            case 500...599: return "Hugging Face is having trouble (HTTP \(code)) — try again later."
+            default: return "Download failed (HTTP \(code))."
+            }
+        }
+        let ns = error as NSError
+        if ns.domain == NSCocoaErrorDomain, ns.code == NSFileWriteOutOfSpaceError {
+            return "The disk filled up mid-download — free some space, then Resume."
+        }
+        return ns.localizedDescription
     }
 
     /// Cancel an in-flight download. The `.part` partial stays on disk, so a
@@ -151,8 +207,12 @@ final class ModelDownloadCenter: ObservableObject {
         do {
             try ModelDownloader.delete(repo: option.id)
             states[option.id] = .notDownloaded
+            lastActionError = nil
         } catch {
-            NSLog("Talkink: model delete failed: \(error.localizedDescription)")
+            lastActionError = "Couldn't delete \(option.displayName) — \(error.localizedDescription)"
+            ErrorLog.shared.record(component: "download",
+                                   message: "Model delete failed for \(option.displayName)",
+                                   detail: error.localizedDescription)
             refreshFromDisk()
         }
     }

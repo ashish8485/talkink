@@ -9,11 +9,23 @@ extension NSColor {
     static let nvidia = NSColor(red: 0x76 / 255, green: 0xB9 / 255, blue: 0x00 / 255, alpha: 1)
 }
 
+/// How a dictation ended — each case gets its own honest pill wording, so the
+/// user always knows what happened (and why auto-paste didn't, when it didn't).
+enum DictationOutcome: Equatable {
+    case pasted
+    case copied                    // auto-paste disabled in Settings
+    case copiedNoAccessibility     // wanted to paste, Accessibility not granted
+    case copiedSecureField         // OS blocks synthetic ⌘V into password fields
+    case noSpeech                  // silence — nothing worth transcribing
+    case notRecognized             // speech detected, model produced nothing
+    case wrongLanguage(String)     // speech detected, forced language produced nothing
+}
+
 enum OverlayState: Equatable {
     case hidden
     case recording
     case transcribing
-    case done(String, pasted: Bool)
+    case done(String, outcome: DictationOutcome)
     case error(String)
 }
 
@@ -79,17 +91,42 @@ struct OverlayView: View {
         case .transcribing:
             BouncingDots()
             label("Transcribing…")
-        case .done(let text, let pasted):
-            Image(systemName: "checkmark.circle.fill")
+        case .done(_, let outcome):
+            Image(systemName: doneSymbol(outcome))
                 .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(Color.nvidia)
+                .foregroundStyle(doneIsSuccess(outcome) ? Color.nvidia : Color.orange)
                 .transition(.scale.combined(with: .opacity))
-            label(text.isEmpty ? "Nothing heard" : (pasted ? "Pasted" : "Copied"))
+            label(doneLabel(outcome))
         case .error(let msg):
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(.orange)
             label(msg)
+        }
+    }
+
+    private func doneLabel(_ outcome: DictationOutcome) -> String {
+        switch outcome {
+        case .pasted: return "Pasted"
+        case .copied: return "Copied"
+        case .copiedNoAccessibility: return "Copied — allow Accessibility to auto-paste"
+        case .copiedSecureField: return "Copied — secure field, paste with ⌘V"
+        case .noSpeech: return "No speech detected"
+        case .notRecognized: return "Heard speech, but couldn't make out words"
+        case .wrongLanguage(let lang): return "Heard speech — but nothing in \(lang). Try Auto?"
+        }
+    }
+
+    private func doneSymbol(_ outcome: DictationOutcome) -> String {
+        doneIsSuccess(outcome) ? "checkmark.circle.fill" : "waveform.slash"
+    }
+
+    /// A green check only when there IS text on the clipboard — an empty
+    /// result with a checkmark would be a small lie.
+    private func doneIsSuccess(_ outcome: DictationOutcome) -> Bool {
+        switch outcome {
+        case .pasted, .copied, .copiedNoAccessibility, .copiedSecureField: return true
+        case .noSpeech, .notRecognized, .wrongLanguage: return false
         }
     }
 
