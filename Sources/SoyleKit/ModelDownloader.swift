@@ -51,7 +51,11 @@ public enum ModelDownloader {
     /// loader applies (non-empty safetensors + valid config.json) — in that
     /// case `fromPretrained` will use it as-is.
     public static func isCached(repo repoID: String) -> Bool {
-        let dir = modelDirectory(forRepo: repoID)
+        isCachedDirectory(modelDirectory(forRepo: repoID))
+    }
+
+    /// Testable core of `isCached` (the real cache path is fixed by HubCache).
+    static func isCachedDirectory(_ dir: URL) -> Bool {
         guard let files = try? FileManager.default.contentsOfDirectory(
             at: dir, includingPropertiesForKeys: [.fileSizeKey]) else { return false }
         let hasWeights = files.contains { file in
@@ -225,7 +229,11 @@ public enum ModelDownloader {
     /// 62% already here" instead of a from-scratch "Download". `expectedBytes`
     /// comes from the catalog (cheap; no network round-trip).
     public static func partialFraction(repo repoID: String, expectedBytes: Int64) -> Double? {
-        let onDisk = diskUsage(repo: repoID)
+        partialFraction(onDisk: diskUsage(repo: repoID), expectedBytes: expectedBytes)
+    }
+
+    /// Testable core of `partialFraction`.
+    static func partialFraction(onDisk: Int64, expectedBytes: Int64) -> Double? {
         guard onDisk > 0, expectedBytes > 0 else { return nil }
         return min(Double(onDisk) / Double(expectedBytes), 0.99)
     }

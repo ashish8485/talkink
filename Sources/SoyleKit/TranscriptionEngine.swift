@@ -153,7 +153,7 @@ public final class TranscriptionEngine: @unchecked Sendable {
             if error is CancellationError || (error as? URLError)?.code == .cancelled {
                 throw CancellationError()
             }
-            NSLog("Talkink: resumable download failed (\(error.localizedDescription)) — falling back to library download")
+            Log.download.error("resumable download failed (\(error.localizedDescription, privacy: .public)) — falling back to library download")
         }
         try Task.checkCancellation()
     }
@@ -234,12 +234,17 @@ public final class TranscriptionEngine: @unchecked Sendable {
     ///   anything else lands verbatim (malformed) in the decoder prompt.
     /// - Voxtral: ignores the parameter entirely (always auto-detects).
     private func engineLanguage(_ bcp47: String?) -> String? {
+        Self.engineLanguage(bcp47, for: currentTargetModel().engine)
+    }
+
+    /// Static and side-effect-free so tests can pin every engine's mapping.
+    public static func engineLanguage(_ bcp47: String?, for engine: ASREngine) -> String? {
         guard let bcp47 else { return nil }
-        switch currentTargetModel().engine {
+        switch engine {
         case .nemotron:
             return bcp47 == "ar-SA" ? "ar" : bcp47
         case .qwen3:
-            return Self.qwenLanguageNames[String(bcp47.prefix(2)).lowercased()]
+            return qwenLanguageNames[String(bcp47.prefix(2)).lowercased()]
         case .voxtral:
             return nil
         }
