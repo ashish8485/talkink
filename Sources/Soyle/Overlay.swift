@@ -25,7 +25,7 @@ enum OverlayState: Equatable {
     case hidden
     case recording(handsFree: Bool)
     case transcribing
-    case done(String, outcome: DictationOutcome)
+    case done(DictationOutcome)
     case error(String)
 }
 
@@ -91,7 +91,7 @@ struct OverlayView: View {
         case .transcribing:
             BouncingDots()
             label("Transcribing…")
-        case .done(_, let outcome):
+        case .done(let outcome):
             Image(systemName: doneSymbol(outcome))
                 .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(doneIsSuccess(outcome) ? Color.nvidia : Color.orange)

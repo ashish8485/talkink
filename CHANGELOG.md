@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.6.1 — Hallucination guard
+
+### Fixed
+- **Silence can no longer paste invented text.** With a forced language
+  (e.g. French), the models hallucinate plausible sentences on silence or
+  room noise — reproduced on pure digital silence, where Qwen3 + French
+  answers “Oui.”. Talkink now measures speech energy and discards any model
+  output for audio that contains no speech: you get “No speech detected”,
+  never a ghost sentence in your document. The auto-detect rescue also no
+  longer runs on no-speech audio (it only handed the model a second chance
+  to hallucinate). Discards are visible in Settings → Support (count and
+  audio stats only — never text).
+
 ## v0.6.0 — Your words, your way
 
 Production hardening (nothing fails silently anymore) + the most-wanted

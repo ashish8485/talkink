@@ -438,12 +438,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self else { return }
             do {
+                let stats = SpeechStats.analyze(samples: samples)
                 var result = try self.engine.transcribe(samples: samples, language: lang)
                 // A model conditioned on the wrong language can return an
                 // EMPTY transcript for perfectly good speech (verified:
                 // Nemotron + sv-SE prompt on French audio → empty). One
-                // silent retry in auto-detect rescues the dictation.
-                if result.text.isEmpty, lang != nil {
+                // silent retry in auto-detect rescues the dictation — but
+                // only when there IS speech: rescuing silence just gives the
+                // model a second chance to hallucinate.
+                if result.text.isEmpty, lang != nil, stats.likelySpeech {
                     let rescue = try self.engine.transcribe(samples: samples, language: nil)
                     if !rescue.text.isEmpty {
                         result = rescue
@@ -453,7 +456,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 let text = result.text
                 DispatchQueue.main.async {
                     self.transcriptionWatchdog?.cancel()
-                    self.deliver(text: text, samples: samples, forcedLanguage: lang, generation: gen)
+                    self.deliver(text: text, stats: stats, forcedLanguage: lang, generation: gen)
                 }
             } catch {
                 DispatchQueue.main.async {
@@ -471,39 +474,65 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// What to do with a model output, given what the microphone actually
+    /// heard. Pure and static so tests can pin every case — most importantly
+    /// the hallucination guard: a model conditioned on a forced language
+    /// INVENTS text on silence (verified: Qwen3 + French produces "Oui." on
+    /// pure digital silence), so no-speech audio never delivers anything.
+    enum DictationDecision: Equatable {
+        case deliver(String)
+        case noSpeech(discardedCharacters: Int)
+        case notRecognized
+        case wrongLanguage
+    }
+
+    static func decide(text: String, stats: SpeechStats, forcedLanguage: Bool) -> DictationDecision {
+        if !stats.likelySpeech {
+            return .noSpeech(discardedCharacters: text.count)
+        }
+        if text.isEmpty {
+            return forcedLanguage ? .wrongLanguage : .notRecognized
+        }
+        return .deliver(text)
+    }
+
     /// Hand the transcript to the user, with an honest account of what
     /// happened: empty results are explained (silence vs unrecognized speech
-    /// vs language mismatch), clipboard writes are verified, and a skipped
-    /// auto-paste always says why.
-    private func deliver(text rawText: String, samples: [Float], forcedLanguage lang: String?, generation gen: Int) {
+    /// vs language mismatch), hallucinated text on silence is discarded,
+    /// clipboard writes are verified, and a skipped auto-paste always says why.
+    private func deliver(text rawText: String, stats: SpeechStats, forcedLanguage lang: String?, generation gen: Int) {
         // The user's vocabulary fixes names/jargon first, so History, the
         // clipboard and the paste all carry the corrected form. The spell-check
         // gate keeps the fuzzy layer away from real words (main-thread only).
-        let text = Vocabulary.shared.apply(to: rawText, isKnownWord: SpellCheck.isKnownWord)
+        let corrected = Vocabulary.shared.apply(to: rawText, isKnownWord: SpellCheck.isKnownWord)
         let isCurrent = (state == .transcribing && gen == dictationGeneration)
         let outcome: DictationOutcome
 
-        if text.isEmpty {
-            let stats = SpeechStats.analyze(samples: samples)
-            if !stats.likelySpeech {
-                outcome = .noSpeech
-            } else if lang != nil {
-                // Auto-detect rescue already ran and stayed empty too.
-                outcome = .wrongLanguage(settings.language.displayName)
+        switch Self.decide(text: corrected, stats: stats, forcedLanguage: lang != nil) {
+        case .noSpeech(let discarded):
+            if discarded > 0 {
+                // The interesting case: the model produced text for audio with
+                // no speech in it. Metadata only — never the text itself.
                 ErrorLog.shared.record(component: "model", message: String(
-                    format: "Speech detected (%.1fs active, peak %.3f) but empty transcript with language %@ — auto rescue empty too",
-                    stats.activeSeconds, stats.peakRMS, settings.language.displayName))
-            } else {
-                outcome = .notRecognized
-                ErrorLog.shared.record(component: "model", message: String(
-                    format: "Speech detected (%.1fs active) but the model returned an empty transcript (language: auto)",
-                    stats.activeSeconds))
+                    format: "Discarded %d characters the model produced on no-speech audio (peak %.3f, %.1fs active) — hallucination guard",
+                    discarded, stats.peakRMS, stats.activeSeconds))
             }
-        } else {
+            outcome = .noSpeech
+        case .wrongLanguage:
+            // Auto-detect rescue already ran and stayed empty too.
+            outcome = .wrongLanguage(settings.language.displayName)
+            ErrorLog.shared.record(component: "model", message: String(
+                format: "Speech detected (%.1fs active, peak %.3f) but empty transcript with language %@ — auto rescue empty too",
+                stats.activeSeconds, stats.peakRMS, settings.language.displayName))
+        case .notRecognized:
+            outcome = .notRecognized
+            ErrorLog.shared.record(component: "model", message: String(
+                format: "Speech detected (%.1fs active) but the model returned an empty transcript (language: auto)",
+                stats.activeSeconds))
+        case .deliver(let text):
             if !AutoPaster.secureInputActive {
                 // Words are never lost, even when a newer dictation owns the UI.
-                HistoryStore.shared.add(text: text, language: lang,
-                                        audioSeconds: Double(samples.count) / 16_000)
+                HistoryStore.shared.add(text: text, language: lang, audioSeconds: stats.duration)
             }
             guard isCurrent else { return }   // stale: archived above, hands off the clipboard
             guard Clipboard.copy(text) else {
@@ -532,7 +561,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         if isCurrent {
-            overlay.show(.done(text, outcome: outcome), autoHideAfter: Self.hideDelay(for: outcome))
+            overlay.show(.done(outcome), autoHideAfter: Self.hideDelay(for: outcome))
             state = .ready
         }
     }
