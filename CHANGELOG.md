@@ -1,6 +1,61 @@
 # Changelog
 
-## v0.5.0 — Pick your model
+## Unreleased
+
+Production hardening: nothing fails silently anymore.
+
+### Added
+- **Honest result pills** — every way a dictation can end now says what
+  actually happened. Real silence reads "No speech detected"; clear speech
+  that the model couldn't transcribe in your configured language reads
+  "Heard speech — but nothing in French. Try Auto?" (the app now measures
+  speech energy to tell the two apart); a skipped auto-paste explains itself
+  ("secure field, paste with ⌘V" / "allow Accessibility to auto-paste").
+- **Memory pre-flight** — before loading a model, Talkink checks it fits this
+  Mac's unified memory (Metal working-set limit + current pressure) and
+  refuses with a concrete suggestion instead of letting the load take the app
+  down. Picking a too-big model keeps your current one running.
+- **Disk pre-flight** — a download that can't fit fails instantly with the
+  numbers ("needs ~3.1 GB, 1.2 GB free"), not at 97% twenty minutes in.
+- **Report a Problem…** (menu + Settings → Support) — a transparent report
+  (environment + recent error journal, never your transcripts or audio) you
+  review first, then copy or open as a prefilled GitHub issue.
+- **Error journal** — recent issues are visible in Settings → Support,
+  persisted on disk, attached to problem reports, and written to the system
+  log (subsystem `io.github.hasso5703.soyle`). Unclean exits (crash, force
+  quit) are detected at the next launch and journaled too.
+- **Updates you can't miss** — when a new version is found, the menu grows a
+  first-class "⬆️ Update to X — Install…" item and the update alert comes to
+  the front. After updating, the window opens once with an "updated" badge.
+- **Unit tests + CI** — 52 tests pin the model catalog, per-engine language
+  mappings, speech detection, memory verdicts, history persistence, download
+  failure wording and hotkey logic; CI runs them on every pull request.
+
+### Fixed
+- **Clipboard writes are verified** — a failed copy says so and never
+  auto-pastes (the old behaviour would have pasted the clipboard's *previous*
+  content into your document). Transcripts always reach History first, so no
+  words are ever lost.
+- **History can't vanish silently** — save failures show up in the History
+  tab; a corrupted history file is preserved as `history.corrupt-*` instead
+  of being overwritten on the next dictation.
+- **Permission state machine** — loading a model no longer masks the "Input
+  Monitoring required" state, so the hotkey now re-arms the moment the
+  permission is granted (previously it could show "Ready" with a dead hotkey
+  until relaunch).
+- **Stuck "Transcribing…"** — a watchdog resets dictation if inference ever
+  stalls, instead of locking the hotkey out forever.
+- **Dead capture is named** — holding the key while the input device delivers
+  no audio now reports "No audio captured" instead of pretending you said
+  nothing; a microphone yanked mid-recording stops the dictation with a
+  message instead of recording silence.
+- **Model load failures say why** (offline / disk full / rate-limited) with a
+  Retry item in the menu — previously the menu claimed "Loading model…"
+  forever after a failure.
+- Failures that used to vanish into the void are now journaled and surfaced:
+  download errors (with the actual reason under the model row), model
+  deletion errors, "Launch at login" registration errors, update relauncher
+  errors.
 
 You're no longer married to one speech model: choose between seven, see
 exactly what lives on your Mac, and download several at once.

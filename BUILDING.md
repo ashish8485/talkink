@@ -29,6 +29,18 @@ This:
 Output: `dist/Talkink.app`. First dictation downloads the selected model (~2.5 GB
 for the default Qwen3-ASR 1.7B 8-bit) from Hugging Face into `~/.cache/huggingface`.
 
+## Unit tests
+
+Pure-logic suite (model catalog, per-engine language mappings, speech
+detection, memory pre-flight verdicts, history persistence, hotkey
+interpretation) — no Metal, no models, no network, runs in seconds:
+
+```bash
+swift test
+```
+
+CI runs this on every pull request before building the app.
+
 ## Headless self-test (no GUI / mic / permissions)
 
 Verifies the bundled Metal library + model + transcription:
