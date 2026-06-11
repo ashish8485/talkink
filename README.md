@@ -28,13 +28,17 @@ your text is transcribed locally and pasted right at your cursor. Pick your engi
 - ⚡ **Fast** — your words land in about a second; the lightest models run 30–40× faster than real time on a MacBook Air M4.
 - 🌍 **Multilingual** — 27 languages, picked once or auto-detected. Punctuation & capitalization included.
 - ⌨️ **Paste anywhere** — auto-pastes at the cursor; always on the clipboard as a fallback.
-- 📜 **History** — every transcription is kept locally and is searchable / re-copyable in-app.
+- 📖 **Your vocabulary** — teach it your names and jargon (“Talkink”, “PostgreSQL”), fixed on-device right after transcription.
+- 🙌 **Hands-free** — double-tap the key to keep recording, tap once to stop. Scriptable via `talkink://` URLs.
+- 📜 **History & stats** — every transcription kept locally, searchable, with your words-per-minute.
+- 🛟 **Nothing fails silently** — a visible error journal and one-click problem reports (never your transcripts).
 - 🟢 **Open source** (MIT), 100% native Swift — no Python at runtime.
 
 ## How it works
 
 1. Talkink lives in the menu bar (no Dock icon).
 2. **Hold** the push-to-talk key (Right Option ⌥ by default) → recording starts.
+   Prefer not to hold? **Double-tap** the key — recording locks on until you tap again.
 3. **Speak.**
 4. **Release** → local transcription in about a second → text is **pasted at your cursor** (if Accessibility is granted) and **copied to the clipboard**.
 5. It's also saved to **History** in case you need it again.
@@ -112,11 +116,17 @@ A locally built app is signed with your own (or an ad-hoc) identity and runs dir
 Menu bar → **Open Talkink** → *Settings* tab:
 
 - **Push-to-talk key** — Right Option (default), Left Option, Right Control, or Fn / 🌐.
+  **Double-tap for hands-free** (on by default) locks recording until the next tap.
 - **Language** — Auto (detect) or one of 27 languages.
+- **Vocabulary** — your names and jargon, written your way, with the forms they get
+  misheard as. Applied on-device after every transcription; real words are never touched.
 - **Model** — a catalog of seven (Qwen3-ASR 1.7B & 0.6B, NVIDIA Nemotron 3.5, Voxtral
   Mini 4B; 8-bit / bf16 / 4-bit variants) with real size, quality and speed ratings.
   Download several, switch instantly, delete what you don't use.
-- **Auto-paste at cursor**, feedback sounds, launch at login, check for updates.
+- **Auto-paste at cursor**, feedback sounds, launch at login, check for updates,
+  URL automation (off by default).
+- **Support** — recent issues at a glance and a one-click, fully transparent
+  **Report a Problem** (environment + error journal; never your transcripts).
 
 ## Automation
 

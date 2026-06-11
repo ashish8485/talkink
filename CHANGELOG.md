@@ -1,9 +1,9 @@
 # Changelog
 
-## Unreleased
+## v0.6.0 — Your words, your way
 
-Production hardening (nothing fails silently anymore) + the two most-wanted
-dictation features: custom vocabulary and hands-free.
+Production hardening (nothing fails silently anymore) + the most-wanted
+dictation features: custom vocabulary, hands-free, URL automation, stats.
 
 ### Added
 - **Vocabulary** (Settings → Vocabulary) — names and jargon, written your
