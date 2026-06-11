@@ -14,7 +14,7 @@ A clear description of the bug and what you expected instead.
 **Environment**
 - macOS version:
 - Mac model (e.g. MacBook Air M4):
-- Söyle version (menu → About Söyle):
+- Talkink version (menu → About Talkink):
 - Permissions granted (System Settings → Privacy & Security): Microphone / Input Monitoring / Accessibility
 
 **Logs / screenshots**

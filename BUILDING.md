@@ -9,7 +9,7 @@ produces a binary that fails at runtime with *"Failed to load the default metall
 
 - Apple Silicon Mac (M-series), macOS 14+
 - **Full Xcode 16+** (not just Command Line Tools — the Metal compiler is required)
-- ~2 GB free disk for the build + model weights
+- ~5 GB free disk for the build + the default model's weights
 
 ## Build the app
 
@@ -26,8 +26,8 @@ This:
 5. code-signs the bundle with hardened runtime + `packaging/Soyle.entitlements`
    (identity order: `Developer ID Application` → local `Soyle Dev` → ad-hoc).
 
-Output: `dist/Talkink.app`. First dictation downloads the model (~1.2 GB bf16 by
-default) from Hugging Face into `~/.cache/huggingface`.
+Output: `dist/Talkink.app`. First dictation downloads the selected model (~2.5 GB
+for the default Qwen3-ASR 1.7B 8-bit) from Hugging Face into `~/.cache/huggingface`.
 
 ## Headless self-test (no GUI / mic / permissions)
 

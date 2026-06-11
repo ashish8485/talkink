@@ -25,8 +25,8 @@ your text is transcribed locally and pasted right at your cursor. Pick your engi
 ## Why Talkink
 
 - 🔒 **Local & private** — your voice and text never leave your Mac. No cloud, no subscription.
-- ⚡ **Fast** — ~30–40× faster than real time on a MacBook Air M4 (8-bit model).
-- 🌍 **Multilingual** — auto-detects across the model's ~40 locales; 9 fixed locales selectable (EN/FR/DE/ES/IT/PT/TR/AR/NL). Punctuation & capitalization included.
+- ⚡ **Fast** — your words land in about a second; the lightest models run 30–40× faster than real time on a MacBook Air M4.
+- 🌍 **Multilingual** — 27 languages, picked once or auto-detected. Punctuation & capitalization included.
 - ⌨️ **Paste anywhere** — auto-pastes at the cursor; always on the clipboard as a fallback.
 - 📜 **History** — every transcription is kept locally and is searchable / re-copyable in-app.
 - 🟢 **Open source** (MIT), 100% native Swift — no Python at runtime.
@@ -36,7 +36,7 @@ your text is transcribed locally and pasted right at your cursor. Pick your engi
 1. Talkink lives in the menu bar (no Dock icon).
 2. **Hold** the push-to-talk key (Right Option ⌥ by default) → recording starts.
 3. **Speak.**
-4. **Release** → local transcription in a fraction of a second → text is **pasted at your cursor** (if Accessibility is granted) and **copied to the clipboard**.
+4. **Release** → local transcription in about a second → text is **pasted at your cursor** (if Accessibility is granted) and **copied to the clipboard**.
 5. It's also saved to **History** in case you need it again.
 
 A floating pill (NVIDIA green) shows the state: recording → transcribing → done.
@@ -82,8 +82,9 @@ A floating pill (NVIDIA green) shows the state: recording → transcribing → d
 
 ### 3. Use it
 
-On the **first** transcription, Talkink downloads the model (~1.2 GB) once — you'll see
-*"Loading model…"*. After that: **hold Right Option ⌥, speak, release** → your text appears at
+On the **first** transcription, Talkink downloads the model once (~2.5 GB for the
+recommended Qwen3-ASR 1.7B) with a live progress bar — interrupted downloads resume where
+they stopped. After that: **hold Right Option ⌥, speak, release** → your text appears at
 the cursor and on the clipboard. That's it. 🎤
 
 ---
@@ -105,8 +106,10 @@ A locally built app is signed with your own (or an ad-hoc) identity and runs dir
 Menu bar → **Open Talkink** → *Settings* tab:
 
 - **Push-to-talk key** — Right Option (default), Left Option, Right Control, or Fn / 🌐.
-- **Language** — Auto (detect) or a fixed locale.
-- **Model** — **bf16** (default, best quality) or **8-bit** (fastest).
+- **Language** — Auto (detect) or one of 27 languages.
+- **Model** — a catalog of seven (Qwen3-ASR 1.7B & 0.6B, NVIDIA Nemotron 3.5, Voxtral
+  Mini 4B; 8-bit / bf16 / 4-bit variants) with real size, quality and speed ratings.
+  Download several, switch instantly, delete what you don't use.
 - **Auto-paste at cursor**, feedback sounds, launch at login, check for updates.
 
 ## Network activity

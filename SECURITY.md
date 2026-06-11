@@ -9,9 +9,12 @@ Talkink is designed to keep your data on your machine:
   file (`~/Library/Application Support/Soyle/history.json`).
 - **No telemetry, no analytics, no accounts.**
 - **Network calls** are limited to two, both inspectable in the source:
-  1. First-run model download (~756 MB) from Hugging Face into `~/.cache/huggingface`.
-  2. An optional update check against the GitHub Releases API at launch
-     (`Sources/Soyle/UpdateChecker.swift`) — disable it in Settings.
+  1. Model downloads (~2.5 GB for the default model; 760 MB–4.1 GB depending on your
+     pick) from Hugging Face into `~/.cache/huggingface`
+     (`Sources/SoyleKit/ModelDownloader.swift`).
+  2. An optional [Sparkle](https://sparkle-project.org) update check against the
+     EdDSA-signed appcast at `talkink.app` (`Sources/Soyle/Updater.swift`) — disable
+     it in Settings. Update archives download from GitHub Releases.
 
 ## Permissions
 
