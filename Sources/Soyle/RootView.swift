@@ -22,6 +22,8 @@ struct RootView: View {
             // is downloading, so the progress bars are what the user sees first.
             if !perms.essentialsGranted || ModelDownloadCenter.shared.anyDownloading { selection = 1 }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .soyleShowHistory)) { _ in selection = 0 }
+        .onReceive(NotificationCenter.default.publisher(for: .soyleShowSettings)) { _ in selection = 1 }
         .sheet(isPresented: Binding(
             get: { !settings.hasPickedLanguage },
             set: { _ in }

@@ -69,6 +69,11 @@ final class PushToTalk {
     /// True while a double-tap locked the recording on (next tap stops it).
     var isHandsFreeLocked: Bool { machine.locked }
 
+    /// Start a dictation as if a double-tap had locked it (URL automation).
+    func forceHandsFreeLock() { machine.forceLock() }
+    /// Clear the lock (URL stop, or a start that didn't go through).
+    func resetHandsFree() { machine.reset() }
+
     private var tap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var key: Key
@@ -119,6 +124,13 @@ final class PushToTalk {
             swallowNextRelease = false
             lastPressAt = -1
             lastReleaseAt = -1
+        }
+
+        /// Lock as if a double-tap had happened (URL-triggered dictation —
+        /// no key is held, so the next tap must stop, not restart).
+        mutating func forceLock() {
+            locked = true
+            swallowNextRelease = false
         }
     }
 

@@ -436,7 +436,7 @@ struct SettingsView: View {
     // MARK: Behaviour
 
     private var behaviourSection: some View {
-        Section("Behaviour") {
+        Section {
             Toggle("Paste automatically at the cursor", isOn: $settings.autoPaste)
             Toggle("Feedback sounds", isOn: $settings.playSounds)
             Toggle("Launch at login", isOn: $settings.launchAtLogin)
@@ -445,6 +445,12 @@ struct SettingsView: View {
                     .font(.caption).foregroundStyle(.orange)
             }
             Toggle("Check for updates automatically", isOn: $settings.checkForUpdates)
+            Toggle("Allow URL automation (talkink://)", isOn: $settings.allowURLAutomation)
+        } header: {
+            Text("Behaviour")
+        } footer: {
+            Text("URL automation lets Raycast, Shortcuts or a terminal start dictation (talkink://toggle). Off by default — any app could trigger the microphone otherwise.")
+                .font(.caption).foregroundStyle(.secondary)
         }
     }
 

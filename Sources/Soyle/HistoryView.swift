@@ -48,6 +48,9 @@ struct HistoryView: View {
                 .textFieldStyle(.plain)
             Spacer()
             if !history.items.isEmpty {
+                Text(statsLine)
+                    .font(.caption2).foregroundStyle(.secondary)
+                    .help("Across the dictations kept in History")
                 Button(role: .destructive) { history.clear() } label: {
                     Text("Clear all").font(.caption)
                 }
@@ -56,6 +59,18 @@ struct HistoryView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
+    }
+
+    private var statsLine: String {
+        let stats = HistoryStore.stats(of: history.items)
+        var parts = ["\(stats.words.formatted()) words"]
+        if stats.spokenSeconds >= 60 {
+            parts.append("\(Int(stats.spokenSeconds / 60)) min spoken")
+        }
+        if let wpm = stats.wordsPerMinute {
+            parts.append("\(wpm) wpm")
+        }
+        return parts.joined(separator: " · ")
     }
 
     private func row(_ item: HistoryItem) -> some View {

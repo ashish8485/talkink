@@ -7,13 +7,24 @@ struct HistoryItem: Identifiable, Codable, Equatable {
     let text: String
     let date: Date
     let language: String?
+    /// Spoken duration — optional so pre-existing history files still decode.
+    let audioSeconds: Double?
 
-    init(text: String, language: String?) {
+    init(text: String, language: String?, audioSeconds: Double? = nil) {
         self.id = UUID()
         self.text = text
         self.date = Date()
         self.language = language
+        self.audioSeconds = audioSeconds
     }
+}
+
+/// Aggregates for the History tab's stats line.
+struct HistoryStats: Equatable {
+    let words: Int
+    let spokenSeconds: Double
+    /// Only when there's enough timed material to be meaningful.
+    let wordsPerMinute: Int?
 }
 
 /// Persistent history of transcriptions, so anything that didn't paste (or got
@@ -42,12 +53,30 @@ final class HistoryStore: ObservableObject {
         load()
     }
 
-    func add(text: String, language: String?) {
+    func add(text: String, language: String?, audioSeconds: Double? = nil) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        items.insert(HistoryItem(text: trimmed, language: language), at: 0)
+        items.insert(HistoryItem(text: trimmed, language: language, audioSeconds: audioSeconds), at: 0)
         if items.count > maxItems { items = Array(items.prefix(maxItems)) }
         save()
+    }
+
+    /// Pure aggregation, testable. WPM uses only the timed items and needs
+    /// ≥30s of material before it claims anything.
+    static func stats(of items: [HistoryItem]) -> HistoryStats {
+        var words = 0
+        var timedWords = 0
+        var seconds = 0.0
+        for item in items {
+            let count = item.text.split(whereSeparator: \.isWhitespace).count
+            words += count
+            if let audio = item.audioSeconds, audio > 0 {
+                timedWords += count
+                seconds += audio
+            }
+        }
+        let wpm = seconds >= 30 ? Int((Double(timedWords) / (seconds / 60)).rounded()) : nil
+        return HistoryStats(words: words, spokenSeconds: seconds, wordsPerMinute: wpm)
     }
 
     func delete(_ item: HistoryItem) {

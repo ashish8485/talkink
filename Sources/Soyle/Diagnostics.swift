@@ -5,6 +5,9 @@ extension Notification.Name {
     /// Posted by the menu's "Report a Problem…" — the Settings window opens
     /// the report sheet in response.
     static let soyleOpenReport = Notification.Name("soyle.openReport")
+    /// talkink://history and talkink://settings select the matching tab.
+    static let soyleShowHistory = Notification.Name("soyle.showHistory")
+    static let soyleShowSettings = Notification.Name("soyle.showSettings")
 }
 
 /// Detects unclean exits: the marker exists at launch ⇔ the previous session

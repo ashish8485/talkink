@@ -104,6 +104,7 @@ final class SettingsStore: ObservableObject {
         static let playSounds = "soyle.playSounds"
         static let autoPaste = "soyle.autoPaste"
         static let handsFreeDoubleTap = "soyle.handsFreeDoubleTap"
+        static let allowURLAutomation = "soyle.allowURLAutomation"
         static let checkForUpdates = "soyle.checkForUpdates"
         static let hasOnboarded = "soyle.hasOnboarded"
         static let hasPickedLanguage = "soyle.hasPickedLanguage"
@@ -130,6 +131,11 @@ final class SettingsStore: ObservableObject {
     /// Double-tap the push-to-talk key to lock recording on (tap again to stop).
     @Published var handsFreeDoubleTap: Bool {
         didSet { defaults.set(handsFreeDoubleTap, forKey: K.handsFreeDoubleTap) }
+    }
+    /// talkink:// dictation commands. OFF by default: any app can open a URL,
+    /// and starting the microphone must stay the user's explicit choice.
+    @Published var allowURLAutomation: Bool {
+        didSet { defaults.set(allowURLAutomation, forKey: K.allowURLAutomation) }
     }
     @Published var checkForUpdates: Bool {
         didSet { defaults.set(checkForUpdates, forKey: K.checkForUpdates) }
@@ -161,6 +167,7 @@ final class SettingsStore: ObservableObject {
         playSounds = defaults.object(forKey: K.playSounds) as? Bool ?? true
         autoPaste = defaults.object(forKey: K.autoPaste) as? Bool ?? true
         handsFreeDoubleTap = defaults.object(forKey: K.handsFreeDoubleTap) as? Bool ?? true
+        allowURLAutomation = defaults.object(forKey: K.allowURLAutomation) as? Bool ?? false
         checkForUpdates = defaults.object(forKey: K.checkForUpdates) as? Bool ?? true
         launchAtLogin = (SMAppService.mainApp.status == .enabled)
         hasOnboarded = defaults.bool(forKey: K.hasOnboarded)

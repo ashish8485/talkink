@@ -502,7 +502,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             if !AutoPaster.secureInputActive {
                 // Words are never lost, even when a newer dictation owns the UI.
-                HistoryStore.shared.add(text: text, language: lang)
+                HistoryStore.shared.add(text: text, language: lang,
+                                        audioSeconds: Double(samples.count) / 16_000)
             }
             guard isCurrent else { return }   // stale: archived above, hands off the clipboard
             guard Clipboard.copy(text) else {
@@ -729,6 +730,69 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
         if !hasVisibleWindows { openSettings() }
         return true
+    }
+
+    // MARK: talkink:// automation (Raycast, Alfred, Shortcuts, `open` in a terminal)
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls { handleCommandURL(url) }
+    }
+
+    private func handleCommandURL(_ url: URL) {
+        guard url.scheme == "talkink" else { return }
+        let command = url.host ?? url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        Log.app.notice("URL command: \(command, privacy: .public)")
+        switch command {
+        case "settings":
+            openSettings()
+            NotificationCenter.default.post(name: .soyleShowSettings, object: nil)
+        case "history":
+            openSettings()
+            NotificationCenter.default.post(name: .soyleShowHistory, object: nil)
+        case "report":
+            reportProblem()
+        case "record", "stop", "toggle":
+            // Any app can open a URL — starting the microphone stays the
+            // user's explicit, opt-in choice.
+            guard settings.allowURLAutomation else {
+                ErrorLog.shared.record(component: "automation",
+                    message: "URL command '\(command)' refused — “Allow URL automation” is off (Settings → Behaviour)")
+                overlay.show(.error("URL automation is off — enable it in Settings → Behaviour"), autoHideAfter: 3.5)
+                return
+            }
+            handleDictationCommand(command)
+        default:
+            ErrorLog.shared.record(component: "automation", message: "Unknown URL command '\(command)'")
+            overlay.show(.error("Unknown command: talkink://\(command)"), autoHideAfter: 2.5)
+        }
+    }
+
+    private func handleDictationCommand(_ command: String) {
+        switch (command, state) {
+        case ("record", .ready), ("toggle", .ready):
+            startURLDictation()
+        case ("stop", .recording), ("toggle", .recording):
+            stopURLDictation()
+        case ("record", .recording), ("stop", _):
+            break   // already there — a no-op, not an error
+        default:
+            // loading/failed/permission states explain themselves via the
+            // same path a key press takes.
+            startRecording()
+        }
+    }
+
+    /// URL-triggered dictation has no held key, so it's hands-free by design:
+    /// the pill reads "tap to stop", the key or talkink://stop ends it.
+    private func startURLDictation() {
+        ptt.forceHandsFreeLock()
+        startRecording()
+        if state != .recording { ptt.resetHandsFree() }   // start refused — don't leave a stale lock
+    }
+
+    private func stopURLDictation() {
+        ptt.resetHandsFree()
+        stopRecording()
     }
 
     @objc private func checkForUpdates() { Updater.shared.checkForUpdates() }
