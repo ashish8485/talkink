@@ -23,7 +23,7 @@ enum DictationOutcome: Equatable {
 
 enum OverlayState: Equatable {
     case hidden
-    case recording
+    case recording(handsFree: Bool)
     case transcribing
     case done(String, outcome: DictationOutcome)
     case error(String)
@@ -84,10 +84,10 @@ struct OverlayView: View {
         switch model.state {
         case .hidden:
             EmptyView()
-        case .recording:
+        case .recording(let handsFree):
             RecordingDot()
             LiveWaveform(level: model.level)
-            label("Speak…")
+            label(handsFree ? "Speak — tap to stop" : "Speak…")
         case .transcribing:
             BouncingDots()
             label("Transcribing…")

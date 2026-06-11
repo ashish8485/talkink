@@ -9,8 +9,10 @@ struct SettingsView: View {
     @ObservedObject var perms: PermissionsModel
     @ObservedObject var downloads = ModelDownloadCenter.shared
     @ObservedObject var errorLog = ErrorLog.shared
+    @ObservedObject var vocabulary = Vocabulary.shared
     @State private var deleteCandidate: ASRModelOption?
     @State private var showReport = false
+    @State private var editingEntry: VocabularyEntry?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -20,6 +22,7 @@ struct SettingsView: View {
                 Form {
                     permissionsSection
                     dictationSection
+                    vocabularySection
                     modelSection
                     behaviourSection
                     supportSection
@@ -37,6 +40,9 @@ struct SettingsView: View {
             footer
         }
         .sheet(isPresented: $showReport) { ReportProblemView() }
+        .sheet(item: $editingEntry) { entry in
+            VocabularyEditSheet(entry: entry, vocabulary: vocabulary)
+        }
         .onReceive(NotificationCenter.default.publisher(for: .soyleOpenReport)) { _ in
             showReport = true
         }
@@ -139,13 +145,65 @@ struct SettingsView: View {
     // MARK: Dictation
 
     private var dictationSection: some View {
-        Section("Dictation") {
+        Section {
             Picker("Push-to-talk key", selection: $settings.pttKey) {
                 ForEach(PushToTalk.Key.allCases, id: \.self) { Text($0.displayName).tag($0) }
             }
             Picker("Language", selection: $settings.language) {
                 ForEach(SoyleLanguage.allCases) { Text($0.displayName).tag($0) }
             }
+            Toggle("Double-tap for hands-free", isOn: $settings.handsFreeDoubleTap)
+        } header: {
+            Text("Dictation")
+        } footer: {
+            Text("Hands-free: tap \(settings.pttKey.displayName) twice quickly to keep recording without holding — tap once to stop.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    // MARK: Vocabulary — names and jargon, fixed on-device after transcription.
+
+    private var vocabularySection: some View {
+        Section {
+            ForEach(vocabulary.entries) { entry in
+                HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(entry.phrase).font(.system(size: 13, weight: .semibold))
+                        if !entry.variants.isEmpty {
+                            Text("heard as: \(entry.variants.joined(separator: ", "))")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer()
+                    Button { editingEntry = entry } label: {
+                        Image(systemName: "pencil").font(.system(size: 11))
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Edit")
+                    Button { vocabulary.remove(entry) } label: {
+                        Image(systemName: "trash").font(.system(size: 11)).foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Remove")
+                }
+                .padding(.vertical, 1)
+            }
+            if let vocabError = vocabulary.lastError {
+                Label(vocabError, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption).foregroundStyle(.orange)
+            }
+            Button {
+                editingEntry = VocabularyEntry(phrase: "")
+            } label: {
+                Label("Add Word…", systemImage: "plus.circle")
+            }
+            .buttonStyle(.borderless)
+            .tint(.nvidia)
+        } header: {
+            Text("Vocabulary")
+        } footer: {
+            Text("Names and jargon, written your way — fixed on this Mac right after transcription (e.g. “Talkink”, heard as “Talking”). Unknown words close to one of yours are corrected automatically; real words are never touched.")
+                .font(.caption).foregroundStyle(.secondary)
         }
     }
 
@@ -444,5 +502,60 @@ struct SettingsView: View {
 
     private var appVersion: String {
         (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "dev"
+    }
+}
+
+/// Add/edit one vocabulary entry. Presented with `.sheet(item:)`, so `entry`
+/// is the source of truth for new-vs-existing (an id already in the store
+/// means edit).
+private struct VocabularyEditSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var phrase: String
+    @State private var variantsText: String
+    private let entryID: UUID
+    private let isNew: Bool
+    private let vocabulary: Vocabulary
+
+    init(entry: VocabularyEntry, vocabulary: Vocabulary) {
+        _phrase = State(initialValue: entry.phrase)
+        _variantsText = State(initialValue: entry.variants.joined(separator: ", "))
+        entryID = entry.id
+        isNew = !vocabulary.entries.contains { $0.id == entry.id }
+        self.vocabulary = vocabulary
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(isNew ? "Add Word" : "Edit Word")
+                .font(.system(size: 15, weight: .bold))
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Write it as").font(.caption).foregroundStyle(.secondary)
+                TextField("Talkink", text: $phrase)
+                    .textFieldStyle(.roundedBorder)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Heard as (optional, comma-separated)")
+                    .font(.caption).foregroundStyle(.secondary)
+                TextField("Talking, tall kink", text: $variantsText)
+                    .textFieldStyle(.roundedBorder)
+            }
+            HStack {
+                Spacer()
+                Button("Cancel") { dismiss() }
+                Button(isNew ? "Add" : "Save") {
+                    var entry = VocabularyEntry(
+                        phrase: phrase,
+                        variants: variantsText.split(separator: ",").map(String.init))
+                    entry.id = entryID
+                    if isNew { vocabulary.add(entry) } else { vocabulary.update(entry) }
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+                .tint(.nvidia)
+                .disabled(phrase.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        }
+        .padding(18)
+        .frame(width: 400)
     }
 }

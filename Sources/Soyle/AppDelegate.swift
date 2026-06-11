@@ -64,6 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             .store(in: &cancellables)
 
+        ptt.handsFreeEnabled = settings.handsFreeDoubleTap
         observeSettings()
         requestPermissionsThenStart()
         loadModel()
@@ -269,6 +270,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .dropFirst()
             .sink { [weak self] _ in self?.languageRescues = 0 }
             .store(in: &cancellables)
+        settings.$handsFreeDoubleTap
+            .dropFirst()
+            .sink { [weak self] enabled in self?.ptt.handsFreeEnabled = enabled }
+            .store(in: &cancellables)
     }
 
     private func reloadModel(_ newModel: ASRModelOption) {
@@ -336,7 +341,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             try recorder.start()
             recordingStartedAt = Date()
             state = .recording
-            overlay.show(.recording)
+            overlay.show(.recording(handsFree: ptt.isHandsFreeLocked))
             playSound(start: true)
         } catch {
             ErrorLog.shared.record(component: "audio",
@@ -470,7 +475,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// happened: empty results are explained (silence vs unrecognized speech
     /// vs language mismatch), clipboard writes are verified, and a skipped
     /// auto-paste always says why.
-    private func deliver(text: String, samples: [Float], forcedLanguage lang: String?, generation gen: Int) {
+    private func deliver(text rawText: String, samples: [Float], forcedLanguage lang: String?, generation gen: Int) {
+        // The user's vocabulary fixes names/jargon first, so History, the
+        // clipboard and the paste all carry the corrected form. The spell-check
+        // gate keeps the fuzzy layer away from real words (main-thread only).
+        let text = Vocabulary.shared.apply(to: rawText, isKnownWord: SpellCheck.isKnownWord)
         let isCurrent = (state == .transcribing && gen == dictationGeneration)
         let outcome: DictationOutcome
 
@@ -671,7 +680,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return pct > 0 ? "⏳ Downloading model… \(pct)%"
                            : "⏳ Downloading model (\(settings.modelOption.sizeLabel), one-time)…"
         case .ready: return "● Ready — hold \(settings.pttKey.displayName)"
-        case .recording: return "🎙 Recording…"
+        case .recording:
+            return ptt.isHandsFreeLocked
+                ? "🎙 Recording — tap \(settings.pttKey.displayName) to stop"
+                : "🎙 Recording…"
         case .transcribing: return "✍️ Transcribing…"
         case .needsInputMonitoring: return "⚠️ Permission required"
         case .loadFailed(let reason): return "⚠️ \(String(reason.prefix(72)))"

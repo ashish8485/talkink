@@ -103,6 +103,7 @@ final class SettingsStore: ObservableObject {
         static let pttKey = "soyle.pttKey"
         static let playSounds = "soyle.playSounds"
         static let autoPaste = "soyle.autoPaste"
+        static let handsFreeDoubleTap = "soyle.handsFreeDoubleTap"
         static let checkForUpdates = "soyle.checkForUpdates"
         static let hasOnboarded = "soyle.hasOnboarded"
         static let hasPickedLanguage = "soyle.hasPickedLanguage"
@@ -125,6 +126,10 @@ final class SettingsStore: ObservableObject {
     }
     @Published var autoPaste: Bool {
         didSet { defaults.set(autoPaste, forKey: K.autoPaste) }
+    }
+    /// Double-tap the push-to-talk key to lock recording on (tap again to stop).
+    @Published var handsFreeDoubleTap: Bool {
+        didSet { defaults.set(handsFreeDoubleTap, forKey: K.handsFreeDoubleTap) }
     }
     @Published var checkForUpdates: Bool {
         didSet { defaults.set(checkForUpdates, forKey: K.checkForUpdates) }
@@ -155,6 +160,7 @@ final class SettingsStore: ObservableObject {
         pttKey = PushToTalk.Key(rawValue: keyRaw ?? PushToTalk.Key.rightOption.rawValue) ?? .rightOption
         playSounds = defaults.object(forKey: K.playSounds) as? Bool ?? true
         autoPaste = defaults.object(forKey: K.autoPaste) as? Bool ?? true
+        handsFreeDoubleTap = defaults.object(forKey: K.handsFreeDoubleTap) as? Bool ?? true
         checkForUpdates = defaults.object(forKey: K.checkForUpdates) as? Bool ?? true
         launchAtLogin = (SMAppService.mainApp.status == .enabled)
         hasOnboarded = defaults.bool(forKey: K.hasOnboarded)

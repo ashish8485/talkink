@@ -34,7 +34,13 @@ enum SelfTest {
                 FileHandle.standardError.write(Data(String(
                     format: "[selftest] OK — audio=%.1fs infer=%.2fs %.0fx RT\n",
                     r.audioSeconds, r.inferSeconds, r.realtimeFactor).utf8))
-                print(r.text)
+                // Exact-variant vocabulary pass only (the fuzzy layer needs the
+                // main-thread spell checker — exercised in the app, not here).
+                let corrected = Vocabulary.shared.apply(to: r.text)
+                if corrected != r.text {
+                    FileHandle.standardError.write(Data("[selftest] vocabulary: \"\(r.text)\" → \"\(corrected)\"\n".utf8))
+                }
+                print(corrected)
                 exit(0)
             } catch {
                 FileHandle.standardError.write(Data("[selftest] ERROR: \(error)\n".utf8))

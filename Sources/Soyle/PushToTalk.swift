@@ -61,10 +61,66 @@ final class PushToTalk {
     /// is dead until something re-arms it. Called on the main queue.
     var onTapDisabled: () -> Void = {}
 
+    /// Settings → "Double-tap for hands-free": tap-tap-&-hold-free dictation.
+    var handsFreeEnabled: Bool {
+        get { machine.handsFreeEnabled }
+        set { machine.handsFreeEnabled = newValue }
+    }
+    /// True while a double-tap locked the recording on (next tap stops it).
+    var isHandsFreeLocked: Bool { machine.locked }
+
     private var tap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var key: Key
     private var isDown = false
+    private var machine = TapMachine()
+    var clock: () -> Double = { ProcessInfo.processInfo.systemUptime }   // injectable for tests
+
+    /// Press/release → start/stop decisions, including the double-tap
+    /// hands-free lock. Pure value type so tests can drive it with a fake
+    /// clock: tap (press+release < 0.35s) then press again within 0.4s locks
+    /// the recording on; the next tap stops it.
+    struct TapMachine {
+        var handsFreeEnabled = true
+        private(set) var locked = false
+        private var lastPressAt = -1.0
+        private var lastReleaseAt = -1.0
+        private var swallowNextRelease = false
+
+        enum Action { case start, stop, none }
+
+        mutating func press(at now: Double) -> Action {
+            if locked {
+                // The stop tap: end dictation now, ignore its own release.
+                locked = false
+                swallowNextRelease = true
+                lastPressAt = now
+                return .stop
+            }
+            let sinceRelease = lastReleaseAt < 0 ? .infinity : now - lastReleaseAt
+            let lastHold = (lastPressAt >= 0 && lastReleaseAt >= lastPressAt)
+                ? lastReleaseAt - lastPressAt : .infinity
+            if handsFreeEnabled, sinceRelease < 0.4, lastHold < 0.35 {
+                locked = true
+            }
+            lastPressAt = now
+            return .start
+        }
+
+        mutating func release(at now: Double) -> Action {
+            lastReleaseAt = now
+            if locked { return .none }                       // hands-free: keep recording
+            if swallowNextRelease { swallowNextRelease = false; return .none }
+            return .stop
+        }
+
+        mutating func reset() {
+            locked = false
+            swallowNextRelease = false
+            lastPressAt = -1
+            lastReleaseAt = -1
+        }
+    }
 
     init(key: Key = .rightOption) {
         self.key = key
@@ -76,6 +132,7 @@ final class PushToTalk {
         guard newKey != key else { return }
         key = newKey
         isDown = false
+        machine.reset()
     }
 
     /// Start the tap. Returns false if Input Monitoring isn't granted (tap can't be created).
@@ -124,7 +181,10 @@ final class PushToTalk {
         }
         tap = nil
         runLoopSource = nil
-        if isDown { isDown = false; onStop() }
+        let wasActive = isDown || machine.locked
+        isDown = false
+        machine.reset()
+        if wasActive { onStop() }
     }
 
     private func handle(type: CGEventType, event: CGEvent) {
@@ -179,9 +239,15 @@ final class PushToTalk {
     private func setDown(_ down: Bool) {
         guard down != isDown else { return }
         isDown = down
+        let action = down ? machine.press(at: clock()) : machine.release(at: clock())
         // Dispatch to main so UI/audio work never blocks the tap callback.
         DispatchQueue.main.async { [weak self] in
-            down ? self?.onStart() : self?.onStop()
+            guard let self else { return }
+            switch action {
+            case .start: self.onStart()
+            case .stop: self.onStop()
+            case .none: break
+            }
         }
     }
 }
