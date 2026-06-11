@@ -108,3 +108,7 @@ git add appcast.xml && git commit -m "release: appcast for vX.Y.Z" && git push
 ```
 
 Sparkle-equipped installs (≥ v0.3.0) then update in-app automatically.
+
+Finally, bump the [Homebrew tap](https://github.com/hasso5703/homebrew-tap)
+(version + sha256 of the published DMG — the two commands are in its README).
+`brew livecheck talkink` flags the cask whenever it falls behind the appcast.

@@ -63,6 +63,12 @@ A floating pill (NVIDIA green) shows the state: recording → transcribing → d
 3. Launch Talkink from Applications. No security warning — Talkink is **signed and
    notarized by Apple** (since v0.3.0).
 
+Or, with [Homebrew](https://brew.sh):
+
+```bash
+brew install --cask hasso5703/tap/talkink
+```
+
 > <a name="is-it-safe"></a>**Is it safe?** Yes, twice over: the download is notarized by Apple
 > (scanned and ticketed), *and* Talkink is fully open source — you can read every line in this
 > repo and [build it yourself](BUILDING.md).
@@ -145,7 +151,7 @@ Talkink's transcription is 100% on-device. The only network calls are:
 
 - [ ] Live text while you speak (streaming `generateStream`)
 - [x] Notarized + [Sparkle](https://sparkle-project.org) in-app auto-update (v0.3.0)
-- [ ] Homebrew cask
+- [x] Homebrew install via [our tap](https://github.com/hasso5703/homebrew-tap) (v0.5.0) — homebrew-cask once notable enough
 - [ ] Custom dictionary (proper nouns, jargon)
 - [ ] Hands-free toggle mode
 
