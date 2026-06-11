@@ -73,6 +73,9 @@ Or, with [Homebrew](https://brew.sh):
 brew install --cask hasso5703/tap/talkink
 ```
 
+> Homebrew 6+ asks you to trust third-party taps first:
+> `brew trust hasso5703/tap`, then install.
+
 > <a name="is-it-safe"></a>**Is it safe?** Yes, twice over: the download is notarized by Apple
 > (scanned and ticketed), *and* Talkink is fully open source — you can read every line in this
 > repo and [build it yourself](BUILDING.md).
