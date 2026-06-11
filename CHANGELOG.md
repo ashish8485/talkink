@@ -2,9 +2,19 @@
 
 ## Unreleased
 
-Production hardening: nothing fails silently anymore.
+Production hardening (nothing fails silently anymore) + the two most-wanted
+dictation features: custom vocabulary and hands-free.
 
 ### Added
+- **Vocabulary** (Settings → Vocabulary) — names and jargon, written your
+  way. Add a word like “Talkink” with the forms it gets misheard as
+  (“Talking”) and every transcription is fixed on this Mac, right after the
+  model runs. Unknown words close to one of yours are corrected
+  automatically — real words of your language are never touched (system
+  spell-checker guard).
+- **Hands-free dictation** — double-tap the push-to-talk key to lock
+  recording on (the pill shows “Speak — tap to stop”), tap once to finish.
+  Toggle in Settings → Dictation.
 - **Honest result pills** — every way a dictation can end now says what
   actually happened. Real silence reads "No speech detected"; clear speech
   that the model couldn't transcribe in your configured language reads

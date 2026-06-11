@@ -152,8 +152,8 @@ Talkink's transcription is 100% on-device. The only network calls are:
 - [ ] Live text while you speak (streaming `generateStream`)
 - [x] Notarized + [Sparkle](https://sparkle-project.org) in-app auto-update (v0.3.0)
 - [x] Homebrew install via [our tap](https://github.com/hasso5703/homebrew-tap) (v0.5.0) — homebrew-cask once notable enough
-- [ ] Custom dictionary (proper nouns, jargon)
-- [ ] Hands-free toggle mode
+- [x] Custom dictionary (proper nouns, jargon) — Settings → Vocabulary
+- [x] Hands-free — double-tap the push-to-talk key, tap to stop
 
 ## License
 
