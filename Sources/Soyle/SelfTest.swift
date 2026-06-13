@@ -154,10 +154,62 @@ enum SelfTest {
                         + " | " + flag
                     print(row)
                 }
-                err("\n[vadtest] done — \(differ) disagreement(s) RMS vs Silero")
+                err("\n[vadtest] done, \(differ) disagreement(s) RMS vs Silero")
                 exit(0)
             } catch {
                 err("[vadtest] ERROR: \(error)")
+                exit(1)
+            }
+        }
+        dispatchMain()
+    }
+
+    /// Replays the real delivery decision (speech gate, transcription, the
+    /// hallucination guard's decide()) on audio files, mirroring the live
+    /// dictation path without GUI/mic/clipboard. The best offline proxy for
+    /// "what would the app actually do with this clip".
+    /// Usage: Soyle [--lang fr-FR] --dictatetest FILE...
+    static func runDictateTest(language: String?, paths: [String]) -> Never {
+        func err(_ s: String) { FileHandle.standardError.write(Data((s + "\n").utf8)) }
+        guard !paths.isEmpty else { err("[dictatetest] usage: [--lang CODE] --dictatetest FILE..."); exit(2) }
+        let model = SettingsStore.shared.modelOption
+        let engine = TranscriptionEngine(model: model)
+        Task {
+            do {
+                err("[dictatetest] model: \(model.displayName) | forced language: \(language ?? "auto")")
+                try await engine.load()
+                engine.warmUp()
+                let vad = try? await SileroSpeechDetector.load()
+                err("[dictatetest] Silero VAD: \(vad == nil ? "UNAVAILABLE (RMS fallback)" : "loaded")\n")
+                for p in paths {
+                    let url = URL(fileURLWithPath: (p as NSString).expandingTildeInPath)
+                    let name = url.lastPathComponent
+                    let samples: [Float]
+                    do { samples = try AudioLoader.load16kMono(url: url) }
+                    catch { err("  \(name): could not load (\(error))"); continue }
+                    let stats = SpeechStats.analyze(samples: samples)
+                    let sil = vad.flatMap { try? $0.analyze(samples: samples) }
+                    let gate = SpeechGate.resolve(silero: sil, rms: stats)
+                    var result = try engine.transcribe(samples: samples, language: language)
+                    var rescued = false
+                    if result.text.isEmpty, language != nil, gate.hasSpeech {
+                        let r = try engine.transcribe(samples: samples, language: nil)
+                        if !r.text.isEmpty { result = r; rescued = true }
+                    }
+                    let corrected = Vocabulary.shared.apply(to: result.text)
+                    let outcome: String
+                    switch AppDelegate.decide(text: corrected, hasSpeech: gate.hasSpeech, forcedLanguage: language != nil) {
+                    case .deliver(let t):  outcome = "DELIVER\(rescued ? " (rescued to auto)" : ""): \"\(t)\""
+                    case .noSpeech(let d): outcome = "NO SPEECH, nothing pasted" + (d > 0 ? " (discarded \(d) hallucinated chars)" : "")
+                    case .wrongLanguage:   outcome = "WRONG LANGUAGE, nothing pasted"
+                    case .notRecognized:   outcome = "NOT RECOGNIZED, nothing pasted"
+                    }
+                    print(name.padding(toLength: 20, withPad: " ", startingAt: 0)
+                          + " [gate \(gate.source.rawValue)/\(gate.hasSpeech ? "speech" : "silence")] -> " + outcome)
+                }
+                exit(0)
+            } catch {
+                err("[dictatetest] ERROR: \(error)")
                 exit(1)
             }
         }
