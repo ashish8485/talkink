@@ -1,4 +1,4 @@
-/* ───────────────────────── Talkink — liquid glass over deep night ───────────────────────── */
+/* ───────────────────────── Talkink, liquid glass over deep night ───────────────────────── */
 
 :root {
   --bg: #070908;
@@ -319,7 +319,7 @@ details p strong { color: var(--ink); }
 .reveal.d1 { animation-delay: .12s; } .reveal.d2 { animation-delay: .24s; }
 .reveal.d3 { animation-delay: .38s; } .reveal.d4 { animation-delay: .55s; }
 @keyframes rise { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
-/* Progressive enhancement: sections hide only when JS is confirmed running —
+/* Progressive enhancement: sections hide only when JS is confirmed running,
    without JS the whole page stays visible. */
 .js .reveal-on-scroll { opacity: 0; transform: translateY(30px); transition: opacity .8s cubic-bezier(.2,.7,.2,1), transform .8s cubic-bezier(.2,.7,.2,1); }
 .js .reveal-on-scroll.d1 { transition-delay: .1s; } .js .reveal-on-scroll.d2 { transition-delay: .2s; }
