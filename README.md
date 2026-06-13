@@ -16,7 +16,7 @@ your text is transcribed locally and pasted right at your cursor. Pick your engi
 
 <br/>
 
-<img src="assets/demo.gif" alt="Hold a key, speak, release — the text is pasted at the cursor" width="760"/>
+<img src="assets/demo.gif" alt="Dictating into Claude Code with Talkink: hold Right Option, speak, and the text is pasted at the cursor" width="760"/>
 
 </div>
 
