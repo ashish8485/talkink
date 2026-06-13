@@ -18,6 +18,11 @@ if CommandLine.arguments.contains("--memtest") {
     SelfTest.runMemTest() // never returns
 }
 
+// Headless Silero VAD vs RMS comparison on real audio files (no GUI/model).
+if let i = CommandLine.arguments.firstIndex(of: "--vadtest") {
+    SelfTest.runVADTest(paths: Array(CommandLine.arguments[(i + 1)...])) // never returns
+}
+
 let app = NSApplication.shared
 let delegate = AppDelegate()
 app.delegate = delegate

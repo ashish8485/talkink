@@ -29,6 +29,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var updateAvailableVersion: String?  // set by Sparkle → prominent menu item
     private var languageRescues = 0              // empty transcripts rescued by auto-detect
     private var loadTask: Task<Void, Never>?     // the one tracked selected-model load
+    private var silero: SileroSpeechDetector?    // Silero VAD; nil falls back to RMS
+    private var sileroLoadStarted = false
     private var pendingStop: DispatchWorkItem?   // release-grace timer (tail capture)
     private var dictationGeneration = 0          // ignore stale transcription completions
     private var recordingStartedAt: Date?        // wall clock, to spot dead-capture sessions
@@ -163,6 +165,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         startModelLoad(of: settings.modelOption)
     }
 
+    /// Loads the Silero VAD once, in the background. If it fails (offline at
+    /// first run, model missing, etc.) the speech gate silently falls back to
+    /// RMS; dictation is never blocked or broken by the VAD.
+    private func loadSileroIfNeeded() {
+        guard !sileroLoadStarted else { return }
+        sileroLoadStarted = true
+        Task { [weak self] in
+            let detector = try? await SileroSpeechDetector.load()
+            await MainActor.run {
+                self?.silero = detector
+                if detector == nil {
+                    ErrorLog.shared.record(component: "vad",
+                                           message: "Silero VAD unavailable, using RMS speech detection")
+                }
+            }
+        }
+    }
+
     /// One tracked load at a time: selecting another model cancels the wait on
     /// the previous one (its download keeps running concurrently in the
     /// center — resumable, never wasted) and the stale task can no longer
@@ -202,6 +222,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 // a load whose weights are actually installed flips to .ready.
                 if engine.isLoaded {
                     center.markActive(target)
+                    loadSileroIfNeeded()
                     if state != .needsInputMonitoring { state = .ready } else { updateMenu() }
                 } else {
                     center.clearLoadMarker(target)
@@ -435,18 +456,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         transcriptionWatchdog = watchdog
         DispatchQueue.main.asyncAfter(deadline: .now() + 120, execute: watchdog)
 
+        let detector = silero   // captured on main; nil means RMS fallback
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self else { return }
             do {
                 let stats = SpeechStats.analyze(samples: samples)
+                // Silero VAD decides whether the user actually spoke; RMS
+                // SpeechStats is the safety net when Silero is unavailable.
+                let sileroResult = detector.flatMap { try? $0.analyze(samples: samples) }
+                let gate = SpeechGate.resolve(silero: sileroResult, rms: stats)
                 var result = try self.engine.transcribe(samples: samples, language: lang)
                 // A model conditioned on the wrong language can return an
                 // EMPTY transcript for perfectly good speech (verified:
                 // Nemotron + sv-SE prompt on French audio → empty). One
-                // silent retry in auto-detect rescues the dictation — but
-                // only when there IS speech: rescuing silence just gives the
-                // model a second chance to hallucinate.
-                if result.text.isEmpty, lang != nil, stats.likelySpeech {
+                // silent retry in auto-detect rescues the dictation, but only
+                // when there IS speech: rescuing silence just gives the model
+                // a second chance to hallucinate.
+                if result.text.isEmpty, lang != nil, gate.hasSpeech {
                     let rescue = try self.engine.transcribe(samples: samples, language: nil)
                     if !rescue.text.isEmpty {
                         result = rescue
@@ -456,7 +482,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 let text = result.text
                 DispatchQueue.main.async {
                     self.transcriptionWatchdog?.cancel()
-                    self.deliver(text: text, stats: stats, forcedLanguage: lang, generation: gen)
+                    self.deliver(text: text, stats: stats, gate: gate, forcedLanguage: lang, generation: gen)
                 }
             } catch {
                 DispatchQueue.main.async {
@@ -486,8 +512,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case wrongLanguage
     }
 
-    static func decide(text: String, stats: SpeechStats, forcedLanguage: Bool) -> DictationDecision {
-        if !stats.likelySpeech {
+    static func decide(text: String, hasSpeech: Bool, forcedLanguage: Bool) -> DictationDecision {
+        if !hasSpeech {
             return .noSpeech(discardedCharacters: text.count)
         }
         if text.isEmpty {
@@ -500,7 +526,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// happened: empty results are explained (silence vs unrecognized speech
     /// vs language mismatch), hallucinated text on silence is discarded,
     /// clipboard writes are verified, and a skipped auto-paste always says why.
-    private func deliver(text rawText: String, stats: SpeechStats, forcedLanguage lang: String?, generation gen: Int) {
+    private func deliver(text rawText: String, stats: SpeechStats, gate: SpeechGate.Verdict, forcedLanguage lang: String?, generation gen: Int) {
         // The user's vocabulary fixes names/jargon first, so History, the
         // clipboard and the paste all carry the corrected form. The spell-check
         // gate keeps the fuzzy layer away from real words (main-thread only).
@@ -508,21 +534,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let isCurrent = (state == .transcribing && gen == dictationGeneration)
         let outcome: DictationOutcome
 
-        switch Self.decide(text: corrected, stats: stats, forcedLanguage: lang != nil) {
+        switch Self.decide(text: corrected, hasSpeech: gate.hasSpeech, forcedLanguage: lang != nil) {
         case .noSpeech(let discarded):
             if discarded > 0 {
                 // The interesting case: the model produced text for audio with
-                // no speech in it. Metadata only — never the text itself.
+                // no speech in it. Metadata only, never the text itself.
                 ErrorLog.shared.record(component: "model", message: String(
-                    format: "Discarded %d characters the model produced on no-speech audio (peak %.3f, %.1fs active) — hallucination guard",
-                    discarded, stats.peakRMS, stats.activeSeconds))
+                    format: "Discarded %d characters the model produced on no-speech audio (gate %@, peak %.3f, %.1fs active), hallucination guard",
+                    discarded, gate.source.rawValue, stats.peakRMS, stats.activeSeconds))
             }
             outcome = .noSpeech
         case .wrongLanguage:
             // Auto-detect rescue already ran and stayed empty too.
             outcome = .wrongLanguage(settings.language.displayName)
             ErrorLog.shared.record(component: "model", message: String(
-                format: "Speech detected (%.1fs active, peak %.3f) but empty transcript with language %@ — auto rescue empty too",
+                format: "Speech detected (%.1fs active, peak %.3f) but empty transcript with language %@, auto rescue empty too",
                 stats.activeSeconds, stats.peakRMS, settings.language.displayName))
         case .notRecognized:
             outcome = .notRecognized

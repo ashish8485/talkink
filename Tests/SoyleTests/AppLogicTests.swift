@@ -163,40 +163,68 @@ final class TapMachineTests: XCTestCase {
 // MARK: - Dictation decision (hallucination guard)
 
 final class DictationDecisionTests: XCTestCase {
-    private func stats(speech: Bool) -> SpeechStats {
+    func testHallucinationOnSilenceIsDiscarded() {
+        // The real bug: Qwen3 + forced French invents text on silence
+        // ("Oui." on pure digital silence, full sentences on room noise).
+        let hallucination = "La ville est située à environ 100 km."
+        let decision = AppDelegate.decide(text: hallucination, hasSpeech: false, forcedLanguage: true)
+        XCTAssertEqual(decision, .noSpeech(discardedCharacters: hallucination.count))
+    }
+
+    func testSilenceWithEmptyOutputIsNoSpeech() {
+        XCTAssertEqual(AppDelegate.decide(text: "", hasSpeech: false, forcedLanguage: false),
+                       .noSpeech(discardedCharacters: 0))
+    }
+
+    func testSpeechWithTextDelivers() {
+        XCTAssertEqual(AppDelegate.decide(text: "bonjour à tous", hasSpeech: true, forcedLanguage: true),
+                       .deliver("bonjour à tous"))
+    }
+
+    func testSpeechEmptyForcedLanguageIsWrongLanguage() {
+        XCTAssertEqual(AppDelegate.decide(text: "", hasSpeech: true, forcedLanguage: true),
+                       .wrongLanguage)
+    }
+
+    func testSpeechEmptyAutoIsNotRecognized() {
+        XCTAssertEqual(AppDelegate.decide(text: "", hasSpeech: true, forcedLanguage: false),
+                       .notRecognized)
+    }
+}
+
+// MARK: - Speech gate (Silero primary, RMS fallback)
+
+final class SpeechGateTests: XCTestCase {
+    private func rms(speech: Bool) -> SpeechStats {
         SpeechStats(duration: 3,
                     peakRMS: speech ? 0.2 : 0.004,
                     noiseFloor: 0.003,
                     activeSeconds: speech ? 1.5 : 0)
     }
 
-    func testHallucinationOnSilenceIsDiscarded() {
-        // The real bug: Qwen3 + forced French invents text on silence
-        // ("Oui." on pure digital silence, full sentences on room noise).
-        let hallucination = "La ville est située à environ 100 km."
-        let decision = AppDelegate.decide(text: hallucination,
-                                          stats: stats(speech: false), forcedLanguage: true)
-        XCTAssertEqual(decision, .noSpeech(discardedCharacters: hallucination.count))
+    func testSileroIsAuthoritativeWhenAvailable() {
+        // Silero overrides RMS in BOTH directions, the real disagreements we
+        // measured: dynamic noise = RMS false positive; loud continuous speech
+        // = RMS false negative.
+        let overNoise = SpeechGate.resolve(silero: SileroResult(speechSeconds: 0, segments: 0),
+                                           rms: rms(speech: true))
+        XCTAssertFalse(overNoise.hasSpeech)
+        XCTAssertEqual(overNoise.source, .silero)
+
+        let overMissed = SpeechGate.resolve(silero: SileroResult(speechSeconds: 3, segments: 1),
+                                            rms: rms(speech: false))
+        XCTAssertTrue(overMissed.hasSpeech)
+        XCTAssertEqual(overMissed.source, .silero)
     }
 
-    func testSilenceWithEmptyOutputIsNoSpeech() {
-        XCTAssertEqual(AppDelegate.decide(text: "", stats: stats(speech: false), forcedLanguage: false),
-                       .noSpeech(discardedCharacters: 0))
-    }
+    func testRMSTakesOverWhenSileroUnavailable() {
+        let speech = SpeechGate.resolve(silero: nil, rms: rms(speech: true))
+        XCTAssertTrue(speech.hasSpeech)
+        XCTAssertEqual(speech.source, .rms)
 
-    func testSpeechWithTextDelivers() {
-        XCTAssertEqual(AppDelegate.decide(text: "bonjour à tous", stats: stats(speech: true), forcedLanguage: true),
-                       .deliver("bonjour à tous"))
-    }
-
-    func testSpeechEmptyForcedLanguageIsWrongLanguage() {
-        XCTAssertEqual(AppDelegate.decide(text: "", stats: stats(speech: true), forcedLanguage: true),
-                       .wrongLanguage)
-    }
-
-    func testSpeechEmptyAutoIsNotRecognized() {
-        XCTAssertEqual(AppDelegate.decide(text: "", stats: stats(speech: true), forcedLanguage: false),
-                       .notRecognized)
+        let silence = SpeechGate.resolve(silero: nil, rms: rms(speech: false))
+        XCTAssertFalse(silence.hasSpeech)
+        XCTAssertEqual(silence.source, .rms)
     }
 }
 

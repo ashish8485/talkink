@@ -28,6 +28,7 @@ let package = Package(
             dependencies: [
                 .product(name: "MLXAudioSTT", package: "mlx-audio-swift"),
                 .product(name: "MLXAudioCore", package: "mlx-audio-swift"),
+                .product(name: "MLXAudioVAD", package: "mlx-audio-swift"),
             ],
             path: "Sources/SoyleKit",
             swiftSettings: [.swiftLanguageMode(.v5)]

@@ -117,4 +117,50 @@ enum SelfTest {
             samples.count, Double(samples.count) / 16_000, rms).utf8))
         exit(samples.count > 8_000 ? 0 : 1)
     }
+
+    /// Compares our RMS-based `SpeechStats` gate against Silero VAD on real
+    /// audio files, so we can see where they agree and where Silero is better
+    /// before swapping it into the hallucination guard.
+    /// Usage: Talkink.app/Contents/MacOS/Soyle --vadtest FILE...
+    static func runVADTest(paths: [String]) -> Never {
+        func err(_ s: String) { FileHandle.standardError.write(Data((s + "\n").utf8)) }
+        func f(_ v: Double, _ d: Int = 2) -> String { String(format: "%.\(d)f", v) }
+        guard !paths.isEmpty else { err("[vadtest] usage: --vadtest FILE..."); exit(2) }
+        Task {
+            do {
+                err("[vadtest] loading Silero VAD (mlx-community/silero-vad)…")
+                let vad = try await SileroSpeechDetector.load()
+                err("[vadtest] ready — RMS SpeechStats vs Silero on \(paths.count) file(s):\n")
+                var differ = 0
+                for p in paths {
+                    let url = URL(fileURLWithPath: (p as NSString).expandingTildeInPath)
+                    let name = url.lastPathComponent
+                    let samples: [Float]
+                    do { samples = try AudioLoader.load16kMono(url: url) }
+                    catch { err("  \(name): could not load (\(error))"); continue }
+                    let rms = SpeechStats.analyze(samples: samples)
+                    let sil = try vad.analyze(samples: samples)
+                    if rms.likelySpeech != sil.likelySpeech { differ += 1 }
+                    let flag = rms.likelySpeech == sil.likelySpeech ? "agree" : "DIFFER"
+                    let rmsV = (rms.likelySpeech ? "SPEECH" : "silence").padding(toLength: 7, withPad: " ", startingAt: 0)
+                    let silV = (sil.likelySpeech ? "SPEECH" : "silence").padding(toLength: 7, withPad: " ", startingAt: 0)
+                    let row = name.padding(toLength: 22, withPad: " ", startingAt: 0)
+                        + " " + f(rms.duration) + "s"
+                        + " | RMS " + rmsV
+                        + " (act " + f(rms.activeSeconds) + "s peak " + f(Double(rms.peakRMS), 3)
+                        + " floor " + f(Double(rms.noiseFloor), 4) + ")"
+                        + " | Silero " + silV
+                        + " (" + String(sil.segments) + " seg, " + f(sil.speechSeconds) + "s)"
+                        + " | " + flag
+                    print(row)
+                }
+                err("\n[vadtest] done — \(differ) disagreement(s) RMS vs Silero")
+                exit(0)
+            } catch {
+                err("[vadtest] ERROR: \(error)")
+                exit(1)
+            }
+        }
+        dispatchMain()
+    }
 }
