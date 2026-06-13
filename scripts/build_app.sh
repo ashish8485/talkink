@@ -14,6 +14,15 @@ DD="${ROOT}/DerivedData"
 PROD="${DD}/Build/Products/${CONFIG}"
 APP="${ROOT}/dist/${APP_NAME}.app"
 
+# Dev/QA tooling (recording studio + --vadtest/--dictatetest) is OFF by default so
+# shipped builds never include it. SOYLE_DEVTOOLS=1 flips the Package.swift toggle
+# on for this build only, then restores it (even on failure, via the trap).
+if [ -n "${SOYLE_DEVTOOLS:-}" ]; then
+  echo "==> dev tools ENABLED (SOYLE_DEVTOOLS=1), not for release"
+  trap 'sed -i "" "s/let soyleDevTools = true/let soyleDevTools = false/" "${ROOT}/Package.swift"' EXIT
+  sed -i '' 's/let soyleDevTools = false/let soyleDevTools = true/' "${ROOT}/Package.swift"
+fi
+
 echo "==> xcodebuild (${CONFIG}) - compiles Swift + MLX C++ + Metal shaders"
 xcodebuild -scheme "${EXEC}" -configuration "${CONFIG}" \
   -destination 'platform=macOS,arch=arm64' \

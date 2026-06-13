@@ -1,6 +1,12 @@
 // swift-tools-version: 6.0
 import PackageDescription
 
+// Dev/QA tooling (recording studio + --vadtest/--dictatetest harnesses) compiles
+// ONLY when this is true. scripts/build_app.sh flips it to true for
+// SOYLE_DEVTOOLS=1 builds and restores it afterwards; shipped release builds keep
+// it false, so end users never get the studio.
+let soyleDevTools = false
+
 let package = Package(
     name: "Soyle",
     platforms: [.macOS(.v14)],
@@ -40,7 +46,7 @@ let package = Package(
                 .product(name: "Sparkle", package: "Sparkle"),
             ],
             path: "Sources/Soyle",
-            swiftSettings: [.swiftLanguageMode(.v5)]
+            swiftSettings: [.swiftLanguageMode(.v5)] + (soyleDevTools ? [.define("SOYLE_DEVTOOLS")] : [])
         ),
         .executableTarget(
             name: "SoyleCLI",

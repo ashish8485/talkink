@@ -118,6 +118,7 @@ enum SelfTest {
         exit(samples.count > 8_000 ? 0 : 1)
     }
 
+#if SOYLE_DEVTOOLS
     /// Compares our RMS-based `SpeechStats` gate against Silero VAD on real
     /// audio files, so we can see where they agree and where Silero is better
     /// before swapping it into the hallucination guard.
@@ -215,4 +216,5 @@ enum SelfTest {
         }
         dispatchMain()
     }
+#endif
 }

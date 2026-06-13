@@ -1,3 +1,4 @@
+#if SOYLE_DEVTOOLS
 import AppKit
 import SwiftUI
 import Foundation
@@ -386,3 +387,4 @@ final class RecordingStudioAppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 }
+#endif

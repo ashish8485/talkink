@@ -18,6 +18,7 @@ if CommandLine.arguments.contains("--memtest") {
     SelfTest.runMemTest() // never returns
 }
 
+#if SOYLE_DEVTOOLS
 // Headless Silero VAD vs RMS comparison on real audio files (no GUI/model).
 if let i = CommandLine.arguments.firstIndex(of: "--vadtest") {
     SelfTest.runVADTest(paths: Array(CommandLine.arguments[(i + 1)...])) // never returns
@@ -34,7 +35,9 @@ if let i = CommandLine.arguments.firstIndex(of: "--dictatetest") {
     let files = Array(CommandLine.arguments[(i + 1)...]).filter { !$0.hasPrefix("--") && $0 != lang }
     SelfTest.runDictateTest(language: lang, paths: files) // never returns
 }
+#endif
 
+#if SOYLE_DEVTOOLS
 // Guided dataset recorder (GUI). Reuses the app's 16 kHz capture and mic
 // permission to build a labelled voice dataset. Usage: Soyle --record-dataset
 if CommandLine.arguments.contains("--record-dataset") {
@@ -44,6 +47,7 @@ if CommandLine.arguments.contains("--record-dataset") {
     studioApp.run()
     exit(0)
 }
+#endif
 
 let app = NSApplication.shared
 let delegate = AppDelegate()
